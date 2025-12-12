@@ -412,3 +412,6 @@ frontend/src/generated/
 *.pem
 *.key
 secrets/
+
+# Planning files
+plan.txt
