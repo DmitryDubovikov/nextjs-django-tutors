@@ -56,10 +56,12 @@ lint: lint-frontend lint-backend
 lint-frontend:
 	@echo "🔍 Running frontend linter (Biome)..."
 	docker compose exec frontend npm run lint
+	docker compose exec frontend npm run format:check
 
 lint-backend:
 	@echo "🔍 Running backend linter (Ruff)..."
 	docker compose exec backend ruff check .
+	docker compose exec backend ruff format --check .
 
 # =============================================================================
 # Testing

@@ -7,14 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "node_modules",
-      ".next",
-      "out",
-      "dist",
-      "coverage",
-      "src/generated"
-    ]
+    "ignore": ["node_modules", ".next", "out", "dist", "coverage", "src/generated"]
   },
   "formatter": {
     "enabled": true,
