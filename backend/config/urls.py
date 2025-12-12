@@ -1,11 +1,9 @@
 """
 URL configuration for Tutors Marketplace project.
-
-Minimal configuration for iteration 0 (Infrastructure and DevEx).
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
@@ -13,4 +11,6 @@ urlpatterns = [
     # API Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    # API endpoints
+    path("api/", include("apps.tutors.urls")),
 ]

@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  typedRoutes: true,
   images: {
     remotePatterns: [
       {
@@ -11,9 +12,6 @@ const nextConfig: NextConfig = {
         pathname: '/tutors-media/**',
       },
     ],
-  },
-  experimental: {
-    typedRoutes: true,
   },
 };
 

@@ -42,6 +42,7 @@ ignore = [
     "PLR2004",  # magic value comparison
     "ARG001",   # unused function argument (common in Django views)
     "ARG002",   # unused method argument
+    "RUF012",   # mutable class attributes (normal Django pattern for Meta, serializers, etc.)
 ]
 
 [tool.ruff.lint.per-file-ignores]
