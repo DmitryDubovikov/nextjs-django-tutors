@@ -88,6 +88,36 @@ make shell-frontend # Open shell in frontend container
 make shell-backend  # Open shell in backend container
 ```
 
+## Pre-commit Hooks
+
+The project uses [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) to automatically lint and format staged files before each commit.
+
+### Setup
+
+```bash
+cd frontend && npm install
+```
+
+This runs `husky` via the `prepare` script and sets up Git hooks.
+
+### What happens on commit
+
+When you run `git commit`, the pre-commit hook automatically:
+
+**Frontend** (via lint-staged):
+- Runs `biome check --write` on staged `*.{js,jsx,ts,tsx,json,css,md}` files
+- Auto-fixes formatting and linting issues
+
+**Backend** (via Docker):
+- Runs `ruff check` and `ruff format --check` on staged `*.py` files
+- Requires Docker containers to be running (`make up`)
+
+### Bypass (not recommended)
+
+```bash
+git commit --no-verify -m "message"
+```
+
 ## Environment Variables
 
 See [.env.example](.env.example) for all available variables.

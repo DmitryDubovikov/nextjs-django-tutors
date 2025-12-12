@@ -18,7 +18,7 @@
     "test:coverage": "vitest run --coverage",
     "generate:api": "orval",
     "generate:api:check": "orval --check",
-    "prepare": "husky"
+    "prepare": "cd .. && husky frontend/.husky"
   },
   "dependencies": {
     "next": "^15.1.0",
