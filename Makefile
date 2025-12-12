@@ -1,4 +1,4 @@
-.PHONY: help up down logs lint lint-frontend lint-backend test test-frontend test-backend check migrate shell-frontend shell-backend
+.PHONY: help up down logs lint lint-frontend lint-backend test test-frontend test-backend check generate-schema generate-api migrate shell-frontend shell-backend
 
 # Default target
 help:
@@ -22,6 +22,10 @@ help:
 	@echo ""
 	@echo "  All checks:"
 	@echo "    make check           - Run lint + test (all)"
+	@echo ""
+	@echo "  Code generation:"
+	@echo "    make generate-schema - Export OpenAPI schema from backend"
+	@echo "    make generate-api    - Generate TypeScript types from schema"
 	@echo ""
 	@echo "  Database:"
 	@echo "    make migrate         - Run Django migrations"
@@ -87,6 +91,21 @@ check: lint test
 	@echo "=========================================="
 	@echo "✅ All checks passed!"
 	@echo "=========================================="
+
+# =============================================================================
+# Code generation
+# =============================================================================
+
+generate-schema:
+	@echo "📝 Generating OpenAPI schema..."
+	docker compose exec backend python manage.py spectacular --file /app/schema.json --format openapi-json
+	docker compose cp backend:/app/schema.json frontend/src/generated/schema.json
+	@echo "✅ Schema exported to frontend/src/generated/schema.json"
+
+generate-api: generate-schema
+	@echo "🔧 Generating TypeScript types from schema..."
+	docker compose exec frontend npm run generate:api
+	@echo "✅ API types generated!"
 
 # =============================================================================
 # Database

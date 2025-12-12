@@ -3,7 +3,7 @@ import { defineConfig } from 'orval';
 export default defineConfig({
   tutors: {
     input: {
-      target: 'http://localhost:8000/api/schema/',
+      target: './src/generated/schema.json',
     },
     output: {
       mode: 'tags-split',
