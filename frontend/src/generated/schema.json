@@ -1,0 +1,277 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Tutors Marketplace API",
+        "version": "0.1.0",
+        "description": "API for Tutors Marketplace pet project"
+    },
+    "paths": {
+        "/api/tutors/": {
+            "get": {
+                "operationId": "tutors_list",
+                "description": "Returns a paginated list of all tutors.",
+                "summary": "List all tutors",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "tutors"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedTutorList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/tutors/{id}/": {
+            "get": {
+                "operationId": "tutors_retrieve",
+                "description": "Returns detailed information about a specific tutor.",
+                "summary": "Get tutor details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this tutor.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutors"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TutorDetail"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "PaginatedTutorList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Tutor"
+                        }
+                    }
+                }
+            },
+            "Tutor": {
+                "type": "object",
+                "description": "Serializer for Tutor model.\n\nUsed for list and retrieve operations.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "description": "Return the tutor's full name.",
+                        "readOnly": true
+                    },
+                    "avatar_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Return the tutor's avatar URL.",
+                        "readOnly": true
+                    },
+                    "headline": {
+                        "type": "string",
+                        "description": "Short tagline describing the tutor",
+                        "maxLength": 200
+                    },
+                    "bio": {
+                        "type": "string",
+                        "description": "Detailed description of the tutor's experience and approach"
+                    },
+                    "hourly_rate": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+                        "description": "Price per hour in local currency"
+                    },
+                    "subjects": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of subjects the tutor teaches"
+                    },
+                    "is_verified": {
+                        "type": "boolean",
+                        "description": "Whether the tutor's credentials have been verified"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "avatar_url",
+                    "bio",
+                    "created_at",
+                    "full_name",
+                    "headline",
+                    "hourly_rate",
+                    "id",
+                    "subjects"
+                ]
+            },
+            "TutorDetail": {
+                "type": "object",
+                "description": "Detailed serializer for Tutor model.\n\nIncludes additional fields for the detail view.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "description": "Return the tutor's full name.",
+                        "readOnly": true
+                    },
+                    "avatar_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Return the tutor's avatar URL.",
+                        "readOnly": true
+                    },
+                    "headline": {
+                        "type": "string",
+                        "description": "Short tagline describing the tutor",
+                        "maxLength": 200
+                    },
+                    "bio": {
+                        "type": "string",
+                        "description": "Detailed description of the tutor's experience and approach"
+                    },
+                    "hourly_rate": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+                        "description": "Price per hour in local currency"
+                    },
+                    "subjects": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of subjects the tutor teaches"
+                    },
+                    "is_verified": {
+                        "type": "boolean",
+                        "description": "Whether the tutor's credentials have been verified"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Return the tutor's email.",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "avatar_url",
+                    "bio",
+                    "created_at",
+                    "email",
+                    "full_name",
+                    "headline",
+                    "hourly_rate",
+                    "id",
+                    "subjects",
+                    "updated_at"
+                ]
+            }
+        },
+        "securitySchemes": {
+            "basicAuth": {
+                "type": "http",
+                "scheme": "basic"
+            },
+            "cookieAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "sessionid"
+            }
+        }
+    }
+}

@@ -405,8 +405,7 @@ static/
 # Media files
 media/
 
-# Generated files
-frontend/src/generated/
+# Generated files (keep frontend/src/generated/ tracked for CI)
 
 # Secrets
 *.pem
