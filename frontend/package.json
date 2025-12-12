@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@biomejs/cli-linux-arm64-musl": "^1.9.4",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
