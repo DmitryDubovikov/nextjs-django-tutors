@@ -272,24 +272,45 @@ make check
 
 This runs both linting and tests for frontend and backend.
 
-### Type Generation
+### API Type Generation
 
 The frontend uses Orval to generate TypeScript types and TanStack Query hooks from the OpenAPI schema.
 
-**Generate types from running backend:**
+**When to regenerate:**
+- After adding/modifying Django models
+- After changing serializers
+- After adding/modifying API endpoints
+
+**Regenerate types (via Docker):**
 ```bash
-cd frontend
-npm run generate:api
+make generate-api
 ```
 
-**Check if generated files are up to date:**
+This command:
+1. Exports OpenAPI schema from backend to `frontend/src/generated/schema.json`
+2. Runs Orval to generate TypeScript types and hooks
+
+**Or step by step:**
 ```bash
+# Export schema only
+make generate-schema
+
+# Generate types (if schema already exported)
+docker compose exec frontend npm run generate:api
+```
+
+**Check if generated files are up to date (CI):**
+```bash
+cd frontend
 npm run generate:api:check
 ```
 
 Generated files are located in:
+- `frontend/src/generated/schema.json` - OpenAPI schema (JSON)
 - `frontend/src/generated/api/` - TanStack Query hooks
 - `frontend/src/generated/schemas/` - TypeScript type definitions
+
+> **Important:** Generated files must be committed to the repository. CI will fail if they are out of date.
 
 ### Database Management
 
@@ -361,6 +382,8 @@ make test              # Run all tests
 make test-frontend     # Run Vitest (frontend)
 make test-backend      # Run pytest (backend)
 make check             # Run lint + test
+make generate-schema   # Export OpenAPI schema from backend
+make generate-api      # Generate TypeScript types from schema
 make migrate           # Run Django migrations
 make shell-frontend    # Open shell in frontend container
 make shell-backend     # Open shell in backend container
