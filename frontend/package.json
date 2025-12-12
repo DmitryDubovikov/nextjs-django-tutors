@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate:api": "orval",
-    "generate:api:check": "orval --check",
+    "generate:api:check": "orval && git diff --exit-code src/generated/",
     "prepare": "cd .. && husky frontend/.husky"
   },
   "dependencies": {

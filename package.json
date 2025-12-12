@@ -1,0 +1,9 @@
+{
+  "name": "nextjs-django-tutors",
+  "private": true,
+  "scripts": {
+    "frontend": "npm --prefix frontend",
+    "backend": "cd backend && uv run",
+    "generate:api": "npm --prefix frontend run generate:api"
+  }
+}
