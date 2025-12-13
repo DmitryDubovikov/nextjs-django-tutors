@@ -3,7 +3,11 @@
  * Used as the mutator for orval-generated hooks.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use internal Docker URL for server-side requests, public URL for client-side
+const API_BASE_URL =
+  typeof window === 'undefined'
+    ? process.env.INTERNAL_API_URL || 'http://backend:8000'
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
  * Custom fetch function for orval-generated hooks.
@@ -34,12 +38,20 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
 
   // Parse response
   if (response.status === 204) {
-    return {} as T;
+    return {
+      data: {},
+      status: 204,
+      headers: response.headers,
+    } as T;
   }
 
   const data = await response.json();
 
-  return data as T;
+  return {
+    data,
+    status: response.status,
+    headers: response.headers,
+  } as T;
 }
 
 /**

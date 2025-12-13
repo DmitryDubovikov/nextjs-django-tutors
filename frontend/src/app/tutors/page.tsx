@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 
 import { TutorCard, TutorCardSkeleton } from '@/components/features/tutor-card';
-import { getTutors } from '@/lib/api/tutors';
+import { tutorsList } from '@/generated/api/tutors/tutors';
 
 export const metadata = {
   title: 'Find Tutors | Tutors Marketplace',
@@ -9,7 +9,8 @@ export const metadata = {
 };
 
 async function TutorGrid() {
-  const { results: tutors } = await getTutors();
+  const response = await tutorsList();
+  const tutors = response.data.results ?? [];
 
   if (tutors.length === 0) {
     return (
