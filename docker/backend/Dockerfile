@@ -5,18 +5,24 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV UV_SYSTEM_PYTHON=1
 
-# Install system dependencies
+# Install system dependencies and uv
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    curl \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY backend/requirements/base.txt requirements/base.txt
-COPY backend/requirements/dev.txt requirements/dev.txt
-RUN pip install --upgrade pip && \
-    pip install -r requirements/dev.txt
+# Add uv to PATH
+ENV PATH="/root/.local/bin:$PATH"
+
+# Copy dependency files
+COPY backend/pyproject.toml backend/uv.lock ./
+
+# Install Python dependencies using uv sync with system Python
+RUN uv sync --frozen --extra dev --no-editable
 
 # Copy the application
 COPY backend/ .
@@ -24,5 +30,8 @@ COPY backend/ .
 # Expose port
 EXPOSE 8000
 
-# Start development server with uvicorn (for async support)
+# Activate venv in PATH for all commands
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Start development server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
