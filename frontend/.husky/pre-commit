@@ -1,10 +1,22 @@
+#!/bin/sh
+set -e
+
 # Frontend: lint-staged (Biome)
 cd frontend && npx lint-staged
+cd ..
 
 # Backend: Ruff via Docker (only if Python files changed)
 PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' | grep '^backend/' || true)
 if [ -n "$PYTHON_FILES" ]; then
   echo "🔍 Running Ruff on staged Python files..."
+
+  # Check that backend container is running
+  if ! docker compose ps --status running 2>/dev/null | grep -q backend; then
+    echo "❌ Error: Backend container is not running"
+    echo "   Please run 'make up' first to start Docker containers"
+    exit 1
+  fi
+
   # Convert to paths relative to backend/
   RELATIVE_FILES=$(echo "$PYTHON_FILES" | sed 's|^backend/||' | tr '\n' ' ')
   docker compose exec -T backend ruff check $RELATIVE_FILES

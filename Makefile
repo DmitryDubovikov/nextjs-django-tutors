@@ -61,6 +61,10 @@ lint-frontend:
 	@echo "🔍 Running frontend linter (Biome)..."
 	docker compose exec frontend npm run lint
 	docker compose exec frontend npm run format:check
+	@echo "🔍 Running TypeScript check..."
+	docker compose exec frontend npm run typecheck
+	@echo "🔍 Checking API types are up to date..."
+	cd frontend && npm run generate:api:check
 
 lint-backend:
 	@echo "🔍 Running backend linter (Ruff)..."
@@ -91,6 +95,19 @@ check: lint test
 	@echo "=========================================="
 	@echo "✅ All checks passed!"
 	@echo "=========================================="
+	@echo ""
+	@echo "  Frontend:"
+	@echo "    ✓ Biome lint"
+	@echo "    ✓ Biome format"
+	@echo "    ✓ TypeScript check"
+	@echo "    ✓ API types up to date"
+	@echo "    ✓ Vitest tests"
+	@echo ""
+	@echo "  Backend:"
+	@echo "    ✓ Ruff lint"
+	@echo "    ✓ Ruff format"
+	@echo "    ✓ pytest tests"
+	@echo ""
 
 # =============================================================================
 # Code generation
