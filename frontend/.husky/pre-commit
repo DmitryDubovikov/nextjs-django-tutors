@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-# Frontend: lint-staged (Biome)
+# Frontend: lint-staged (Biome) - auto-formats JS/TS files
 cd frontend && npx lint-staged
 cd ..
 
@@ -19,6 +19,11 @@ if [ -n "$PYTHON_FILES" ]; then
 
   # Convert to paths relative to backend/
   RELATIVE_FILES=$(echo "$PYTHON_FILES" | sed 's|^backend/||' | tr '\n' ' ')
-  docker compose exec -T backend ruff check $RELATIVE_FILES
-  docker compose exec -T backend ruff format --check $RELATIVE_FILES
+
+  # Auto-fix linting issues and format
+  docker compose exec -T backend ruff check --fix $RELATIVE_FILES
+  docker compose exec -T backend ruff format $RELATIVE_FILES
+
+  # Re-add formatted files to staging
+  echo "$PYTHON_FILES" | xargs git add
 fi
