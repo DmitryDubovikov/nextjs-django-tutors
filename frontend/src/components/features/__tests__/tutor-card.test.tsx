@@ -113,11 +113,12 @@ describe('TutorCard', () => {
   });
 
   describe('styling', () => {
-    it('applies custom className', () => {
+    it('applies custom className to Card', () => {
       const { container } = render(<TutorCard tutor={mockTutor} className="custom-class" />);
 
-      const card = container.firstChild as HTMLElement;
-      expect(card).toHaveClass('custom-class');
+      // className is applied to the inner Card component, not the motion wrapper
+      const card = container.querySelector('.custom-class');
+      expect(card).toBeInTheDocument();
     });
   });
 });

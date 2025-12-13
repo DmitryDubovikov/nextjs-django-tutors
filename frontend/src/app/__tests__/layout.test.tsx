@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import RootLayout from '../layout';
+
+import { Providers } from '../providers';
 
 describe('RootLayout', () => {
-  it('renders children correctly', () => {
-    // Note: Testing Next.js RootLayout with <html> tag has limitations in jsdom
-    // We test that children are rendered, not the html structure
+  it('renders children through Providers correctly', () => {
+    // Test that Providers correctly renders children
+    // We don't test the full RootLayout with <html> tag as it causes hydration warnings in jsdom
     render(
-      <RootLayout>
+      <Providers>
         <div data-testid="child">Test Content</div>
-      </RootLayout>
+      </Providers>
     );
 
     expect(screen.getByTestId('child')).toBeInTheDocument();

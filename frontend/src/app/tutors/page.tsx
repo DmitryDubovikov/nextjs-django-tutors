@@ -1,12 +1,16 @@
 import { Suspense } from 'react';
 
-import { TutorCard, TutorCardSkeleton } from '@/components/features/tutor-card';
+import { TutorCardSkeleton } from '@/components/features/tutor-card';
+import { TutorGridClient } from '@/components/features/tutor-grid-client';
 import { tutorsList } from '@/generated/api/tutors/tutors';
 
 export const metadata = {
   title: 'Find Tutors | Tutors Marketplace',
   description: 'Browse our selection of verified tutors for any subject',
 };
+
+// Force dynamic rendering - data depends on backend API
+export const dynamic = 'force-dynamic';
 
 async function TutorGrid() {
   const response = await tutorsList();
@@ -21,13 +25,7 @@ async function TutorGrid() {
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {tutors.map((tutor) => (
-        <TutorCard key={tutor.id} tutor={tutor} />
-      ))}
-    </div>
-  );
+  return <TutorGridClient tutors={tutors} />;
 }
 
 function TutorGridSkeleton() {
