@@ -106,13 +106,3 @@ exclude_lines = [
 ]
 show_missing = true
 
-[tool.mypy]
-python_version = "3.12"
-plugins = ["mypy_django_plugin.main"]
-ignore_missing_imports = true
-strict = false
-warn_unused_ignores = true
-warn_redundant_casts = true
-
-[tool.django-stubs]
-django_settings_module = "config.settings"
