@@ -128,16 +128,19 @@ class TestTutorViewSet:
 
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
-    def test_list_returns_ordered_by_created_at_desc(self, api_client):
-        """GET /api/tutors/ returns tutors ordered by created_at desc."""
-        tutor1 = TutorFactory()
-        tutor2 = TutorFactory()
-        tutor3 = TutorFactory()
+    def test_list_returns_ordered_by_rating_desc(self, api_client):
+        """GET /api/tutors/ returns tutors ordered by rating desc by default."""
+        from decimal import Decimal
+
+        tutor1 = TutorFactory(rating=Decimal("3.5"))
+        tutor2 = TutorFactory(rating=Decimal("4.5"))
+        tutor3 = TutorFactory(rating=Decimal("4.0"))
 
         response = api_client.get("/api/tutors/")
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert results[0]["id"] == tutor3.id
-        assert results[1]["id"] == tutor2.id
+        # Ordered by rating descending: 4.5, 4.0, 3.5
+        assert results[0]["id"] == tutor2.id
+        assert results[1]["id"] == tutor3.id
         assert results[2]["id"] == tutor1.id

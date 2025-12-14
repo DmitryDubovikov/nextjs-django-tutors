@@ -113,12 +113,24 @@ ignore = [
 "tests/**/*.py" = [
     "ARG",      # Unused arguments in tests are fine
     "PLR2004",  # Magic values in tests
+    "PLC0415",  # Import inside function is fine in tests
+]
+"**/tests/**/*.py" = [
+    "ARG",      # Unused arguments in tests are fine
+    "PLR2004",  # Magic values in tests
+    "PLC0415",  # Import inside function is fine in tests
 ]
 "**/migrations/*.py" = [
     "ALL",      # Ignore all rules in migrations
 ]
 "manage.py" = [
     "PLC0415",  # Import inside function is intentional in Django manage.py
+]
+"**/filters.py" = [
+    "PLC0415",  # Import inside function to avoid circular imports
+]
+"**/serializers.py" = [
+    "PLC0415",  # Import inside method to avoid circular imports
 ]
 
 [tool.ruff.lint.isort]
@@ -148,6 +160,9 @@ addopts = [
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
+]
+filterwarnings = [
+    "ignore::django.utils.deprecation.RemovedInDjango60Warning",
 ]
 
 [tool.coverage.run]

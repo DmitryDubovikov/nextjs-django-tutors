@@ -6,11 +6,11 @@
         "description": "API for Tutors Marketplace pet project"
     },
     "paths": {
-        "/api/tutors/": {
+        "/api/bookings/": {
             "get": {
-                "operationId": "tutors_list",
-                "description": "Returns a paginated list of all tutors.",
-                "summary": "List all tutors",
+                "operationId": "bookings_list",
+                "description": "Returns bookings for the authenticated user. Tutors see bookings where they are the tutor, students see their own bookings.",
+                "summary": "List user's bookings",
                 "parameters": [
                     {
                         "name": "page",
@@ -20,6 +20,823 @@
                         "schema": {
                             "type": "integer"
                         }
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedBookingList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "bookings_create",
+                "description": "Create a new booking with a tutor. Price is automatically calculated based on tutor's hourly rate.",
+                "summary": "Create a booking",
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateBookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateBookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateBookingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateBooking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/": {
+            "get": {
+                "operationId": "bookings_retrieve",
+                "description": "Returns detailed information about a specific booking.",
+                "summary": "Get booking details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "bookings_update",
+                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "bookings_partial_update",
+                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedBookingRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "bookings_destroy",
+                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/cancel/": {
+            "post": {
+                "operationId": "bookings_cancel_create",
+                "description": "Cancel a pending or confirmed booking. Both tutors and students can cancel their bookings.",
+                "summary": "Cancel a booking",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/complete/": {
+            "post": {
+                "operationId": "bookings_complete_create",
+                "description": "Mark a confirmed booking as completed. Only the tutor can complete bookings.",
+                "summary": "Complete a booking",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/confirm/": {
+            "post": {
+                "operationId": "bookings_confirm_create",
+                "description": "Confirm a pending booking. Only the tutor can confirm bookings.",
+                "summary": "Confirm a booking",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/tutor-drafts/": {
+            "get": {
+                "operationId": "tutor_drafts_list",
+                "description": "Returns the current user's tutor profile draft, if any.",
+                "summary": "Get current user's draft",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedTutorDraftList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "tutor_drafts_create",
+                "description": "Creates a new draft or updates an existing one for the current user.",
+                "summary": "Create or update draft",
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TutorDraft"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/tutor-drafts/{id}/": {
+            "get": {
+                "operationId": "tutor_drafts_retrieve",
+                "description": "ViewSet for managing tutor profile drafts.\n\nAllows authenticated users to save and retrieve their profile drafts.\nEach user can only have one draft at a time.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TutorDraft"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "tutor_drafts_update",
+                "description": "ViewSet for managing tutor profile drafts.\n\nAllows authenticated users to save and retrieve their profile drafts.\nEach user can only have one draft at a time.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TutorDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TutorDraft"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "tutor_drafts_partial_update",
+                "description": "ViewSet for managing tutor profile drafts.\n\nAllows authenticated users to save and retrieve their profile drafts.\nEach user can only have one draft at a time.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedTutorDraftRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedTutorDraftRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedTutorDraftRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TutorDraft"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "tutor_drafts_destroy",
+                "description": "Deletes the current user's draft.",
+                "summary": "Delete draft",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/tutor-drafts/clear/": {
+            "delete": {
+                "operationId": "tutor_drafts_clear_destroy",
+                "description": "Deletes the current user's draft.",
+                "summary": "Clear draft",
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/tutors/": {
+            "get": {
+                "operationId": "tutors_list",
+                "description": "Returns a paginated list of all tutors with filtering and sorting.",
+                "summary": "List all tutors",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Teaching format: 'online' or 'offline'"
+                    },
+                    {
+                        "in": "query",
+                        "name": "is_verified",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Location filter (partial match)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "max_price",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Maximum hourly rate"
+                    },
+                    {
+                        "in": "query",
+                        "name": "min_price",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Minimum hourly rate"
+                    },
+                    {
+                        "in": "query",
+                        "name": "min_rating",
+                        "schema": {
+                            "type": "number",
+                            "format": "double"
+                        },
+                        "description": "Minimum rating (0-5)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "ordering",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Sort by: 'rating', '-rating', 'hourly_rate', '-hourly_rate', '-created_at'"
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search query for name, headline, or bio"
+                    },
+                    {
+                        "in": "query",
+                        "name": "subject",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter by subject (e.g., 'math', 'physics')"
                     }
                 ],
                 "tags": [
@@ -89,10 +906,344 @@
                     }
                 }
             }
+        },
+        "/api/tutors/by-slug/{slug}/": {
+            "get": {
+                "operationId": "tutors_by_slug_retrieve",
+                "description": "Returns detailed information about a specific tutor by their slug.",
+                "summary": "Get tutor by slug",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "slug",
+                        "schema": {
+                            "type": "string",
+                            "description": "URL-friendly identifier for the tutor"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "tutors"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Tutor"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/upload/": {
+            "post": {
+                "operationId": "upload_create",
+                "description": "Upload a file to MinIO storage. Returns the public URL.",
+                "summary": "Upload a file",
+                "tags": [
+                    "upload"
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "folder": {
+                                        "type": "string",
+                                        "description": "Optional folder path"
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "File uploaded successfully"
+                    },
+                    "400": {
+                        "description": "Invalid file or validation error"
+                    },
+                    "500": {
+                        "description": "Upload failed"
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
+            "Booking": {
+                "type": "object",
+                "description": "Serializer for Booking model.\n\nUsed for list and retrieve operations.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "tutor": {
+                        "type": "integer",
+                        "description": "The tutor for this booking"
+                    },
+                    "tutor_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "tutor_slug": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "student": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "The student who made the booking"
+                    },
+                    "student_name": {
+                        "type": "string",
+                        "description": "Return the student's full name.",
+                        "readOnly": true
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the lesson is scheduled"
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lesson duration in minutes"
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/StatusEnum"
+                            }
+                        ],
+                        "description": "Current status of the booking\n\n* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
+                    },
+                    "price": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+                        "readOnly": true,
+                        "description": "Price at the time of booking"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Additional notes from student"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "id",
+                    "price",
+                    "scheduled_at",
+                    "student",
+                    "student_name",
+                    "tutor",
+                    "tutor_name",
+                    "tutor_slug",
+                    "updated_at"
+                ]
+            },
+            "BookingRequest": {
+                "type": "object",
+                "description": "Serializer for Booking model.\n\nUsed for list and retrieve operations.",
+                "properties": {
+                    "tutor": {
+                        "type": "integer",
+                        "description": "The tutor for this booking"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the lesson is scheduled"
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lesson duration in minutes"
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/StatusEnum"
+                            }
+                        ],
+                        "description": "Current status of the booking\n\n* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Additional notes from student"
+                    }
+                },
+                "required": [
+                    "scheduled_at",
+                    "tutor"
+                ]
+            },
+            "CreateBooking": {
+                "type": "object",
+                "description": "Serializer for creating new bookings.\n\nAutomatically sets the student and calculates price based on tutor's hourly rate.",
+                "properties": {
+                    "tutor": {
+                        "type": "integer",
+                        "description": "The tutor for this booking"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the lesson is scheduled"
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lesson duration in minutes"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Additional notes from student"
+                    }
+                },
+                "required": [
+                    "scheduled_at",
+                    "tutor"
+                ]
+            },
+            "CreateBookingRequest": {
+                "type": "object",
+                "description": "Serializer for creating new bookings.\n\nAutomatically sets the student and calculates price based on tutor's hourly rate.",
+                "properties": {
+                    "tutor": {
+                        "type": "integer",
+                        "description": "The tutor for this booking"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the lesson is scheduled"
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lesson duration in minutes"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Additional notes from student"
+                    }
+                },
+                "required": [
+                    "scheduled_at",
+                    "tutor"
+                ]
+            },
+            "PaginatedBookingList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Booking"
+                        }
+                    }
+                }
+            },
+            "PaginatedTutorDraftList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TutorDraft"
+                        }
+                    }
+                }
+            },
             "PaginatedTutorList": {
                 "type": "object",
                 "required": [
@@ -124,6 +1275,64 @@
                     }
                 }
             },
+            "PatchedBookingRequest": {
+                "type": "object",
+                "description": "Serializer for Booking model.\n\nUsed for list and retrieve operations.",
+                "properties": {
+                    "tutor": {
+                        "type": "integer",
+                        "description": "The tutor for this booking"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the lesson is scheduled"
+                    },
+                    "duration_minutes": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Lesson duration in minutes"
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/StatusEnum"
+                            }
+                        ],
+                        "description": "Current status of the booking\n\n* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Additional notes from student"
+                    }
+                }
+            },
+            "PatchedTutorDraftRequest": {
+                "type": "object",
+                "description": "Serializer for TutorDraft model.\n\nHandles saving and retrieving tutor profile drafts.",
+                "properties": {
+                    "data": {
+                        "description": "Draft profile data in JSON format"
+                    },
+                    "current_step": {
+                        "type": "integer",
+                        "maximum": 32767,
+                        "minimum": 0,
+                        "description": "Current wizard step (0-4)"
+                    }
+                }
+            },
+            "StatusEnum": {
+                "enum": [
+                    "pending",
+                    "confirmed",
+                    "cancelled",
+                    "completed"
+                ],
+                "type": "string",
+                "description": "* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
+            },
             "Tutor": {
                 "type": "object",
                 "description": "Serializer for Tutor model.\n\nUsed for list and retrieve operations.",
@@ -131,6 +1340,12 @@
                     "id": {
                         "type": "integer",
                         "readOnly": true
+                    },
+                    "slug": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "URL-friendly identifier for the tutor",
+                        "pattern": "^[-a-zA-Z0-9_]+$"
                     },
                     "full_name": {
                         "type": "string",
@@ -168,6 +1383,30 @@
                     "is_verified": {
                         "type": "boolean",
                         "description": "Whether the tutor's credentials have been verified"
+                    },
+                    "rating": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,2})?$",
+                        "description": "Average rating from 0 to 5"
+                    },
+                    "reviews_count": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Number of reviews"
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "City or region",
+                        "maxLength": 100
+                    },
+                    "formats": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Teaching formats: ['online', 'offline']"
                     },
                     "created_at": {
                         "type": "string",
@@ -179,10 +1418,12 @@
                     "avatar_url",
                     "bio",
                     "created_at",
+                    "formats",
                     "full_name",
                     "headline",
                     "hourly_rate",
                     "id",
+                    "slug",
                     "subjects"
                 ]
             },
@@ -193,6 +1434,12 @@
                     "id": {
                         "type": "integer",
                         "readOnly": true
+                    },
+                    "slug": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "URL-friendly identifier for the tutor",
+                        "pattern": "^[-a-zA-Z0-9_]+$"
                     },
                     "full_name": {
                         "type": "string",
@@ -230,6 +1477,30 @@
                     "is_verified": {
                         "type": "boolean",
                         "description": "Whether the tutor's credentials have been verified"
+                    },
+                    "rating": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,2})?$",
+                        "description": "Average rating from 0 to 5"
+                    },
+                    "reviews_count": {
+                        "type": "integer",
+                        "maximum": 2147483647,
+                        "minimum": 0,
+                        "description": "Number of reviews"
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "City or region",
+                        "maxLength": 100
+                    },
+                    "formats": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Teaching formats: ['online', 'offline']"
                     },
                     "created_at": {
                         "type": "string",
@@ -253,13 +1524,64 @@
                     "bio",
                     "created_at",
                     "email",
+                    "formats",
                     "full_name",
                     "headline",
                     "hourly_rate",
                     "id",
+                    "slug",
                     "subjects",
                     "updated_at"
                 ]
+            },
+            "TutorDraft": {
+                "type": "object",
+                "description": "Serializer for TutorDraft model.\n\nHandles saving and retrieving tutor profile drafts.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "data": {
+                        "description": "Draft profile data in JSON format"
+                    },
+                    "current_step": {
+                        "type": "integer",
+                        "maximum": 32767,
+                        "minimum": 0,
+                        "description": "Current wizard step (0-4)"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "id",
+                    "updated_at"
+                ]
+            },
+            "TutorDraftRequest": {
+                "type": "object",
+                "description": "Serializer for TutorDraft model.\n\nHandles saving and retrieving tutor profile drafts.",
+                "properties": {
+                    "data": {
+                        "description": "Draft profile data in JSON format"
+                    },
+                    "current_step": {
+                        "type": "integer",
+                        "maximum": 32767,
+                        "minimum": 0,
+                        "description": "Current wizard step (0-4)"
+                    }
+                }
             }
         },
         "securitySchemes": {

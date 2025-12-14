@@ -8,7 +8,40 @@
 
 export type TutorsListParams = {
 /**
+ * Teaching format: 'online' or 'offline'
+ */
+format?: string;
+is_verified?: boolean;
+/**
+ * Location filter (partial match)
+ */
+location?: string;
+/**
+ * Maximum hourly rate
+ */
+max_price?: number;
+/**
+ * Minimum hourly rate
+ */
+min_price?: number;
+/**
+ * Minimum rating (0-5)
+ */
+min_rating?: number;
+/**
+ * Sort by: 'rating', '-rating', 'hourly_rate', '-hourly_rate', '-created_at'
+ */
+ordering?: string;
+/**
  * A page number within the paginated result set.
  */
 page?: number;
+/**
+ * Search query for name, headline, or bio
+ */
+q?: string;
+/**
+ * Filter by subject (e.g., 'math', 'physics')
+ */
+subject?: string;
 };

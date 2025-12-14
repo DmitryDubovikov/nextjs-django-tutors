@@ -5,6 +5,7 @@ import { TutorCard, TutorCardSkeleton } from '../tutor-card';
 
 const mockTutor: Tutor = {
   id: 1,
+  slug: 'john-doe',
   full_name: 'John Doe',
   avatar_url: 'https://example.com/avatar.jpg',
   headline: 'Expert Mathematics Tutor with 10 years experience',
@@ -12,6 +13,7 @@ const mockTutor: Tutor = {
   hourly_rate: '50.00',
   subjects: ['math', 'algebra', 'calculus'],
   is_verified: true,
+  formats: ['online', 'offline'],
   created_at: '2024-01-01T00:00:00Z',
 };
 
