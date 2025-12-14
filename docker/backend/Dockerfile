@@ -21,7 +21,8 @@ ENV PATH="/root/.local/bin:$PATH"
 # Copy dependency files
 COPY backend/pyproject.toml backend/uv.lock ./
 
-# Install Python dependencies using uv sync with system Python
+# Install Python dependencies using uv sync to /opt/venv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 RUN uv sync --frozen --extra dev --no-editable
 
 # Copy the application
@@ -31,7 +32,7 @@ COPY backend/ .
 EXPOSE 8000
 
 # Activate venv in PATH for all commands
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Start development server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

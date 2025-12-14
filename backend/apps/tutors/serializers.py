@@ -6,7 +6,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import Tutor
+from .models import Tutor, TutorDraft
 
 
 class TutorSerializer(serializers.ModelSerializer):
@@ -65,3 +65,32 @@ class TutorDetailSerializer(TutorSerializer):
     def get_email(self, obj: Tutor) -> str:
         """Return the tutor's email."""
         return obj.user.email
+
+
+class TutorDraftSerializer(serializers.ModelSerializer):
+    """
+    Serializer for TutorDraft model.
+
+    Handles saving and retrieving tutor profile drafts.
+    """
+
+    class Meta:
+        model = TutorDraft
+        fields = ["id", "data", "current_step", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        """Create or update draft for the current user."""
+        user = self.context["request"].user
+        draft, _ = TutorDraft.objects.update_or_create(
+            user=user,
+            defaults=validated_data,
+        )
+        return draft
+
+    def update(self, instance, validated_data):
+        """Update existing draft."""
+        instance.data = validated_data.get("data", instance.data)
+        instance.current_step = validated_data.get("current_step", instance.current_step)
+        instance.save()
+        return instance
