@@ -33,15 +33,18 @@ export function TutorFilters({ subjects }: TutorFiltersProps) {
   const [isPending, startTransition] = useTransition();
   const [localSearch, setLocalSearch] = useState('');
 
-  const [params, setParams] = useQueryStates({
-    q: parseAsString.withDefault(''),
-    subject: parseAsString,
-    minPrice: parseAsInteger,
-    maxPrice: parseAsInteger,
-    format: parseAsStringLiteral(FORMAT_OPTIONS),
-    ordering: parseAsStringLiteral(SORT_OPTIONS).withDefault('-rating'),
-    page: parseAsInteger.withDefault(1),
-  });
+  const [params, setParams] = useQueryStates(
+    {
+      q: parseAsString.withDefault(''),
+      subject: parseAsString,
+      minPrice: parseAsInteger,
+      maxPrice: parseAsInteger,
+      format: parseAsStringLiteral(FORMAT_OPTIONS),
+      ordering: parseAsStringLiteral(SORT_OPTIONS).withDefault('-rating'),
+      page: parseAsInteger.withDefault(1),
+    },
+    { shallow: false }
+  );
 
   // Sync local search with URL param
   useEffect(() => {
