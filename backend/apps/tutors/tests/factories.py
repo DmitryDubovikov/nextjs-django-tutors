@@ -1,7 +1,7 @@
 """
 Factory Boy factories for tutors app models.
 
-Provides test data factories for Tutor model.
+Provides test data factories for Tutor and TutorDraft models.
 """
 
 from decimal import Decimal
@@ -9,8 +9,8 @@ from decimal import Decimal
 import factory
 from factory.django import DjangoModelFactory
 
-from apps.core.tests.factories import TutorUserFactory
-from apps.tutors.models import Tutor
+from apps.core.tests.factories import TutorUserFactory, UserFactory
+from apps.tutors.models import Tutor, TutorDraft
 
 
 class TutorFactory(DjangoModelFactory):
@@ -43,3 +43,20 @@ class MathTutorFactory(TutorFactory):
     headline = "Expert Mathematics Tutor"
     subjects = ["math", "algebra", "calculus"]
     hourly_rate = Decimal("50.00")
+
+
+class TutorDraftFactory(DjangoModelFactory):
+    """Factory for TutorDraft model."""
+
+    class Meta:
+        model = TutorDraft
+
+    user = factory.SubFactory(UserFactory)
+    data = factory.LazyFunction(
+        lambda: {
+            "firstName": "John",
+            "lastName": "Doe",
+            "bio": "An experienced tutor with passion for teaching.",
+        }
+    )
+    current_step = 0

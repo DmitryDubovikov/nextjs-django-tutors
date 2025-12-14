@@ -1,7 +1,7 @@
 """
 Tutors app models.
 
-Contains the Tutor model for tutor profiles.
+Contains the Tutor and TutorDraft models for tutor profiles.
 """
 
 from decimal import Decimal
@@ -10,6 +10,39 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.core.models import User
+
+
+class TutorDraft(models.Model):
+    """
+    Draft tutor profile for saving progress during wizard completion.
+
+    Stores partial tutor profile data in JSON format to allow users to
+    save their progress and resume later. Each user can have only one draft.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="tutor_draft",
+    )
+    data = models.JSONField(
+        default=dict,
+        help_text="Draft profile data in JSON format",
+    )
+    current_step = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Current wizard step (0-4)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tutor_drafts"
+        verbose_name = "Tutor Draft"
+        verbose_name_plural = "Tutor Drafts"
+
+    def __str__(self) -> str:
+        return f"Draft for {self.user}"
 
 
 class Tutor(models.Model):

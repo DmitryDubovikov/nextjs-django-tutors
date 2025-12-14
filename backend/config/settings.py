@@ -175,3 +175,22 @@ CACHES = {
         "LOCATION": REDIS_URL,
     }
 }
+
+
+# MinIO / S3 Storage Configuration
+MINIO_ENDPOINT = env("MINIO_ENDPOINT", default="http://minio:9000")
+MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", default="minioadmin")
+MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", default="minioadmin")
+MINIO_BUCKET = env("MINIO_BUCKET", default="tutors-media")
+MINIO_PUBLIC_URL = env("MINIO_PUBLIC_URL", default="http://localhost:9000")
+
+# Max file upload size (5MB)
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+
+# Allowed upload file types
+ALLOWED_UPLOAD_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+]
