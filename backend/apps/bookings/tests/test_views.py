@@ -30,15 +30,13 @@ class TestBookingViewSet:
         """GET /api/bookings/ requires authentication."""
         response = api_client.get("/api/bookings/")
 
-        # DRF returns 403 Forbidden for unauthenticated requests with IsAuthenticated
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_requires_authentication(self, api_client):
         """POST /api/bookings/ requires authentication."""
         response = api_client.post("/api/bookings/", {})
 
-        # DRF returns 403 Forbidden for unauthenticated requests with IsAuthenticated
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_list_returns_student_bookings(self, api_client):
         """GET /api/bookings/ returns bookings for authenticated student."""

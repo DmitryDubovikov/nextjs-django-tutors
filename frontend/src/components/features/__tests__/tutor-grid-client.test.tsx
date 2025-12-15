@@ -5,7 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Tutor } from '@/generated/schemas';
 
+import { createAuthMock } from '../../../../tests/test-utils';
 import { TutorGridClient } from '../tutor-grid-client';
+
+// Mock auth to prevent next-auth server imports
+const authMock = createAuthMock();
+vi.mock('@/auth', () => ({
+  auth: () => authMock.mock(),
+}));
 
 // Mock dependencies
 vi.mock('nuqs', () => ({
@@ -90,6 +97,7 @@ describe('TutorGridClient', () => {
       },
     });
     vi.clearAllMocks();
+    authMock.setSession(null);
 
     // Default mocks
     vi.mocked(useMediaQuery).mockReturnValue(false);

@@ -3,6 +3,18 @@
  * Used as the mutator for orval-generated hooks.
  */
 
+import { auth } from '@/auth';
+
+/**
+ * Response shape returned by customFetch.
+ * Use this type when calling customFetch directly (not via orval-generated hooks).
+ */
+export interface ApiResponse<T = unknown> {
+  data: T;
+  status: number;
+  headers: Headers;
+}
+
 // Use internal Docker URL for server-side requests, public URL for client-side
 const API_BASE_URL =
   typeof window === 'undefined'
@@ -12,6 +24,9 @@ const API_BASE_URL =
 /**
  * Custom fetch function for orval-generated hooks.
  * Orval calls this with (url, options) signature.
+ *
+ * For server-side rendering, this automatically adds JWT auth headers
+ * from the user's session.
  */
 export async function customFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const fetchOptions = options;
@@ -23,6 +38,18 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
     'Content-Type': 'application/json',
     ...fetchOptions?.headers,
   };
+
+  // On server-side, add auth header from session
+  if (typeof window === 'undefined') {
+    try {
+      const session = await auth();
+      if (session?.accessToken) {
+        (headers as Record<string, string>).Authorization = `Bearer ${session.accessToken}`;
+      }
+    } catch {
+      // Auth not available, continue without auth header
+    }
+  }
 
   // Make request
   const response = await fetch(fullUrl, {

@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
         port: '9000',
         pathname: '/tutors-media/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        pathname: '/**',
+      },
     ],
   },
 };

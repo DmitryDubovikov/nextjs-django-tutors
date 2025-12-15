@@ -70,7 +70,7 @@ class TestTutorDraftViewSet:
         """Test that unauthenticated users cannot access drafts."""
         response = api_client.get("/api/tutor-drafts/")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_list_draft_authenticated_no_draft(self, api_client):
         """Test listing drafts when user has no draft."""
@@ -106,7 +106,7 @@ class TestTutorDraftViewSet:
 
         response = api_client.post("/api/tutor-drafts/", data, format="json")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_draft_authenticated(self, api_client):
         """Test creating a draft for authenticated user."""
