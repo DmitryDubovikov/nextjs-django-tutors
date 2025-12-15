@@ -22,6 +22,7 @@ import type {
 
 import type {
   PaginatedTutorList,
+  Tutor,
   TutorDetail,
   TutorsListParams
 } from '../../schemas';
@@ -34,7 +35,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * Returns a paginated list of all tutors.
+ * Returns a paginated list of all tutors with filtering and sorting.
  * @summary List all tutors
  */
 export type tutorsListResponse200 = {
@@ -254,6 +255,118 @@ export function useTutorsRetrieve<TData = Awaited<ReturnType<typeof tutorsRetrie
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getTutorsRetrieveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+/**
+ * Returns detailed information about a specific tutor by their slug.
+ * @summary Get tutor by slug
+ */
+export type tutorsBySlugRetrieveResponse200 = {
+  data: Tutor
+  status: 200
+}
+    
+export type tutorsBySlugRetrieveResponseSuccess = (tutorsBySlugRetrieveResponse200) & {
+  headers: Headers;
+};
+;
+
+export type tutorsBySlugRetrieveResponse = (tutorsBySlugRetrieveResponseSuccess)
+
+export const getTutorsBySlugRetrieveUrl = (slug: string,) => {
+
+
+  
+
+  return `/api/tutors/by-slug/${slug}/`
+}
+
+export const tutorsBySlugRetrieve = async (slug: string, options?: RequestInit): Promise<tutorsBySlugRetrieveResponse> => {
+  
+  return customFetch<tutorsBySlugRetrieveResponse>(getTutorsBySlugRetrieveUrl(slug),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getTutorsBySlugRetrieveQueryKey = (slug?: string,) => {
+    return [
+    `/api/tutors/by-slug/${slug}/`
+    ] as const;
+    }
+
+    
+export const getTutorsBySlugRetrieveQueryOptions = <TData = Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError = unknown>(slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getTutorsBySlugRetrieveQueryKey(slug);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>> = () => tutorsBySlugRetrieve(slug, requestOptions);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(slug), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type TutorsBySlugRetrieveQueryResult = NonNullable<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>>
+export type TutorsBySlugRetrieveQueryError = unknown
+
+
+export function useTutorsBySlugRetrieve<TData = Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError = unknown>(
+ slug: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof tutorsBySlugRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof tutorsBySlugRetrieve>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTutorsBySlugRetrieve<TData = Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError = unknown>(
+ slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof tutorsBySlugRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof tutorsBySlugRetrieve>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTutorsBySlugRetrieve<TData = Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError = unknown>(
+ slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get tutor by slug
+ */
+
+export function useTutorsBySlugRetrieve<TData = Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError = unknown>(
+ slug: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof tutorsBySlugRetrieve>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getTutorsBySlugRetrieveQueryOptions(slug,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

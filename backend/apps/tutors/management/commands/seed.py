@@ -3,8 +3,10 @@ Management command to seed the database with test tutor data.
 """
 
 import random
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 
 from faker import Faker
 
@@ -43,6 +45,31 @@ class Command(BaseCommand):
         "Dedicated {subject} mentor with proven results",
         "Friendly {subject} tutor specializing in exam prep",
     ]
+
+    LOCATIONS = [
+        "New York, NY",
+        "Los Angeles, CA",
+        "Chicago, IL",
+        "Houston, TX",
+        "Phoenix, AZ",
+        "Philadelphia, PA",
+        "San Antonio, TX",
+        "San Diego, CA",
+        "Dallas, TX",
+        "San Jose, CA",
+        "Austin, TX",
+        "Jacksonville, FL",
+        "Fort Worth, TX",
+        "Columbus, OH",
+        "San Francisco, CA",
+        "Charlotte, NC",
+        "Indianapolis, IN",
+        "Seattle, WA",
+        "Denver, CO",
+        "Boston, MA",
+    ]
+
+    FORMATS = [["online"], ["offline"], ["online", "offline"]]
 
     def add_arguments(self, parser):
         """Add command arguments."""
@@ -101,6 +128,20 @@ class Command(BaseCommand):
                 years=random.randint(2, 15),
             )
 
+            # Generate realistic rating and reviews
+            rating = Decimal(str(round(random.uniform(3.5, 5.0), 2)))
+            reviews_count = random.randint(0, 150)
+            if reviews_count == 0:
+                rating = Decimal("0")  # No reviews means no rating
+
+            # Generate slug
+            base_slug = slugify(f"{first_name}-{last_name}")
+            slug = base_slug
+            counter = 1
+            while Tutor.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
             # Create tutor profile
             Tutor.objects.create(
                 user=user,
@@ -109,6 +150,11 @@ class Command(BaseCommand):
                 hourly_rate=random.randint(20, 150),
                 subjects=subjects,
                 is_verified=random.random() > 0.3,
+                slug=slug,
+                rating=rating,
+                reviews_count=reviews_count,
+                location=random.choice(self.LOCATIONS),
+                formats=random.choice(self.FORMATS),
             )
 
             created_count += 1

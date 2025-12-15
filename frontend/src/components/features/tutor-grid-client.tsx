@@ -1,6 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { parseAsInteger, useQueryState } from 'nuqs';
+import { useEffect, useState, useTransition } from 'react';
+import { useInView } from 'react-intersection-observer';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,200 +15,319 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/components/ui/toast';
+import { useBookingsCreate } from '@/generated/api/bookings/bookings';
+import { tutorsList } from '@/generated/api/tutors/tutors';
 import type { Tutor } from '@/generated/schemas';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 import { TutorCard } from './tutor-card';
 
 interface TutorGridClientProps {
   tutors: Tutor[];
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  searchParams?: Record<string, string>;
 }
 
-/**
- * Client-side tutor grid with search, filter, and booking dialog.
- * Demonstrates usage of new UI components from Iteration 2.
- */
-export function TutorGridClient({ tutors }: TutorGridClientProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState<string>('all');
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center py-4">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
+
+export function TutorGridClient({
+  tutors,
+  currentPage,
+  totalPages,
+  totalCount,
+  searchParams = {},
+}: TutorGridClientProps) {
   const [bookingTutor, setBookingTutor] = useState<Tutor | null>(null);
-  const [isBooking, setIsBooking] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-  // Extract unique subjects from all tutors
-  const allSubjects = useMemo(() => {
-    const subjects = new Set<string>();
-    for (const tutor of tutors) {
-      for (const subject of tutor.subjects) {
-        subjects.add(subject);
-      }
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const { ref: loadMoreRef, inView } = useInView();
+
+  const { mutate: createBooking, isPending: isBooking } = useBookingsCreate();
+
+  const [, setPage] = useQueryState(
+    'page',
+    parseAsInteger.withDefault(1).withOptions({ shallow: false })
+  );
+
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['tutors', 'infinite', searchParams],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await tutorsList({ ...searchParams, page: pageParam });
+      return {
+        results: response.data.results,
+        nextPage: response.data.next ? pageParam + 1 : undefined,
+      };
+    },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
+    initialData: {
+      pages: [{ results: tutors, nextPage: totalPages > 1 ? 2 : undefined }],
+      pageParams: [1],
+    },
+    enabled: isMobile,
+  });
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage && isMobile) {
+      fetchNextPage();
     }
-    return Array.from(subjects).sort();
-  }, [tutors]);
-
-  // Filter tutors based on search query and subject filter
-  const filteredTutors = useMemo(() => {
-    return tutors.filter((tutor) => {
-      const matchesSearch =
-        searchQuery === '' ||
-        tutor.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tutor.headline.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesSubject = subjectFilter === 'all' || tutor.subjects.includes(subjectFilter);
-
-      return matchesSearch && matchesSubject;
-    });
-  }, [tutors, searchQuery, subjectFilter]);
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, isMobile]);
 
   const handleBook = (tutorId: number) => {
-    const tutor = tutors.find((t) => t.id === tutorId);
+    const allTutors = isMobile
+      ? (infiniteData?.pages.flatMap((page) => page.results) ?? [])
+      : tutors;
+    const tutor = allTutors.find((t) => t.id === tutorId);
     if (tutor) {
       setBookingTutor(tutor);
+      setSelectedDate(null);
+      setBookingNotes('');
     }
   };
 
-  const handleConfirmBooking = async () => {
-    if (!bookingTutor) return;
+  const handleConfirmBooking = () => {
+    if (!bookingTutor || !selectedDate) return;
 
-    setIsBooking(true);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setIsBooking(false);
-    setBookingTutor(null);
-
-    toast({
-      title: 'Booking request sent!',
-      description: `Your booking request has been sent to ${bookingTutor.full_name}.`,
-      variant: 'success',
-    });
+    createBooking(
+      {
+        data: {
+          tutor: bookingTutor.id,
+          scheduled_at: selectedDate.toISOString(),
+          duration_minutes: 60,
+          notes: bookingNotes || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Booking request sent!',
+            description: `Your booking request has been sent to ${bookingTutor.full_name}.`,
+            variant: 'success',
+          });
+          setBookingTutor(null);
+          setSelectedDate(null);
+          setBookingNotes('');
+        },
+        onError: () => {
+          toast({
+            title: 'Booking failed',
+            description: 'Failed to create booking. Please try again.',
+            variant: 'error',
+          });
+        },
+      }
+    );
   };
 
-  return (
-    <>
-      {/* Search and filter controls */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-        <div className="flex-1">
-          <Input
-            placeholder="Search by name or headline..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<SearchIcon />}
-            aria-label="Search tutors"
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger aria-label="Filter by subject">
-              <SelectValue placeholder="All subjects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All subjects</SelectItem>
-              {allSubjects.map((subject) => (
-                <SelectItem key={subject} value={subject} className="capitalize">
-                  {subject.replace('-', ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      startTransition(() => {
+        setPage(currentPage - 1);
+      });
+    }
+  };
 
-      {/* Tutor grid */}
-      {filteredTutors.length === 0 ? (
-        <div className="py-12 text-center">
-          <h2 className="font-semibold text-foreground text-xl">No tutors found</h2>
-          <p className="mt-2 text-muted-foreground">
-            Try adjusting your search or filter criteria.
-          </p>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => {
-              setSearchQuery('');
-              setSubjectFilter('all');
-            }}
-          >
-            Clear filters
-          </Button>
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      startTransition(() => {
+        setPage(currentPage + 1);
+      });
+    }
+  };
+
+  const formatPrice = (price: string | number | undefined) => {
+    if (!price) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(Number(price));
+  };
+
+  if (isMobile) {
+    const allTutors = infiniteData?.pages.flatMap((page) => page.results) ?? [];
+
+    return (
+      <>
+        <div className="mb-4 text-muted-foreground text-sm">
+          Showing {allTutors.length} of {totalCount} tutors
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTutors.map((tutor, index) => (
+
+        <div className="grid grid-cols-1 gap-4">
+          {allTutors.map((tutor, index) => (
             <TutorCard key={tutor.id} tutor={tutor} index={index} onBook={handleBook} />
           ))}
         </div>
+
+        <div ref={loadMoreRef} className="flex justify-center py-4">
+          {isFetchingNextPage && <LoadingSpinner />}
+          {!hasNextPage && allTutors.length > 0 && (
+            <p className="text-muted-foreground text-sm">No more tutors to load</p>
+          )}
+        </div>
+
+        {/* Booking Dialog */}
+        <BookingDialog
+          bookingTutor={bookingTutor}
+          setBookingTutor={setBookingTutor}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          bookingNotes={bookingNotes}
+          setBookingNotes={setBookingNotes}
+          handleConfirmBooking={handleConfirmBooking}
+          isBooking={isBooking}
+          formatPrice={formatPrice}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-4 text-muted-foreground text-sm">
+        Showing {tutors.length} of {totalCount} tutors
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {tutors.map((tutor, index) => (
+          <TutorCard key={tutor.id} tutor={tutor} index={index} onBook={handleBook} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <Button
+            variant="outline"
+            onClick={handlePrevPage}
+            disabled={currentPage <= 1 || isPending}
+          >
+            Previous
+          </Button>
+          <span className="text-muted-foreground text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages || isPending}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
-      {/* Booking confirmation dialog */}
-      <Dialog open={bookingTutor !== null} onOpenChange={() => setBookingTutor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Book a lesson</DialogTitle>
-            <DialogDescription>
-              You are about to request a lesson with{' '}
-              <span className="font-semibold">{bookingTutor?.full_name}</span>.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4">
-            <p className="text-muted-foreground text-sm">
-              Rate:{' '}
-              <span className="font-semibold text-foreground">
-                {bookingTutor &&
-                  new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    maximumFractionDigits: 0,
-                  }).format(Number(bookingTutor.hourly_rate))}
-              </span>{' '}
-              per hour
-            </p>
-            <p className="mt-2 text-muted-foreground text-sm">
-              Subjects: {bookingTutor?.subjects.slice(0, 3).join(', ')}
-              {(bookingTutor?.subjects.length ?? 0) > 3 && '...'}
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBookingTutor(null)} disabled={isBooking}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmBooking} isLoading={isBooking}>
-              Confirm booking
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Booking Dialog */}
+      <BookingDialog
+        bookingTutor={bookingTutor}
+        setBookingTutor={setBookingTutor}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        bookingNotes={bookingNotes}
+        setBookingNotes={setBookingNotes}
+        handleConfirmBooking={handleConfirmBooking}
+        isBooking={isBooking}
+        formatPrice={formatPrice}
+      />
     </>
   );
 }
 
-/**
- * Search icon component.
- */
-function SearchIcon() {
+interface BookingDialogProps {
+  bookingTutor: Tutor | null;
+  setBookingTutor: (tutor: Tutor | null) => void;
+  selectedDate: Date | null;
+  setSelectedDate: (date: Date | null) => void;
+  bookingNotes: string;
+  setBookingNotes: (notes: string) => void;
+  handleConfirmBooking: () => void;
+  isBooking: boolean;
+  formatPrice: (price: string | number | undefined) => string;
+}
+
+function BookingDialog({
+  bookingTutor,
+  setBookingTutor,
+  selectedDate,
+  setSelectedDate,
+  bookingNotes,
+  setBookingNotes,
+  handleConfirmBooking,
+  isBooking,
+  formatPrice,
+}: BookingDialogProps) {
   return (
-    <svg
-      className="h-4 w-4"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
+    <Dialog open={bookingTutor !== null} onOpenChange={(open) => !open && setBookingTutor(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Book a lesson with {bookingTutor?.full_name}</DialogTitle>
+          <DialogDescription>Select a date and time for your lesson.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div>
+            <label htmlFor="booking-datetime" className="font-medium text-sm">
+              Select date and time
+            </label>
+            <Input
+              id="booking-datetime"
+              type="datetime-local"
+              value={selectedDate?.toISOString().slice(0, 16) ?? ''}
+              onChange={(e) => setSelectedDate(new Date(e.target.value))}
+              min={new Date().toISOString().slice(0, 16)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="booking-notes" className="font-medium text-sm">
+              Notes (optional)
+            </label>
+            <Input
+              id="booking-notes"
+              placeholder="Any specific topics you want to cover?"
+              value={bookingNotes}
+              onChange={(e) => setBookingNotes(e.target.value)}
+            />
+          </div>
+
+          <p className="text-muted-foreground text-sm">
+            Price:{' '}
+            <span className="font-semibold text-foreground">
+              {formatPrice(bookingTutor?.hourly_rate)}
+            </span>{' '}
+            per hour
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Subjects: {bookingTutor?.subjects.slice(0, 3).join(', ')}
+            {(bookingTutor?.subjects.length ?? 0) > 3 && '...'}
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setBookingTutor(null)} disabled={isBooking}>
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmBooking} disabled={!selectedDate} isLoading={isBooking}>
+            Confirm booking
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

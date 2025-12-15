@@ -22,11 +22,16 @@ class TutorSerializer(serializers.ModelSerializer):
         child=serializers.CharField(),
         help_text="List of subjects the tutor teaches",
     )
+    formats = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Teaching formats: ['online', 'offline']",
+    )
 
     class Meta:
         model = Tutor
         fields = [
             "id",
+            "slug",
             "full_name",
             "avatar_url",
             "headline",
@@ -34,9 +39,13 @@ class TutorSerializer(serializers.ModelSerializer):
             "hourly_rate",
             "subjects",
             "is_verified",
+            "rating",
+            "reviews_count",
+            "location",
+            "formats",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "slug", "created_at"]
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_full_name(self, obj: Tutor) -> str:

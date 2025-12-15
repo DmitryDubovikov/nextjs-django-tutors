@@ -6,8 +6,9 @@ Contains the Tutor and TutorDraft models for tutor profiles.
 
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.text import slugify
 
 from apps.core.models import User
 
@@ -78,6 +79,33 @@ class Tutor(models.Model):
         default=False,
         help_text="Whether the tutor's credentials have been verified",
     )
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        help_text="URL-friendly identifier for the tutor",
+    )
+    rating = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("5"))],
+        help_text="Average rating from 0 to 5",
+    )
+    reviews_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of reviews",
+    )
+    location = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="City or region",
+    )
+    formats = models.JSONField(
+        default=list,
+        help_text="Teaching formats: ['online', 'offline']",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -87,6 +115,18 @@ class Tutor(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+
+    def save(self, *args, **kwargs):
+        """Auto-generate slug if not provided."""
+        if not self.slug:
+            base_slug = slugify(f"{self.user.first_name}-{self.user.last_name}")
+            slug = base_slug
+            counter = 1
+            while Tutor.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     @property
     def full_name(self) -> str:

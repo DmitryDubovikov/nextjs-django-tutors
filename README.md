@@ -80,6 +80,8 @@ docker compose exec backend python manage.py seed --count 20
 After installation, the following services will be available:
 
 - **Frontend**: http://localhost:3000
+- **Admin Dashboard**: http://localhost:3000/admin
+- **Bookings Page**: http://localhost:3000/bookings
 - **Backend API**: http://localhost:8000/api/
 - **API Documentation**: http://localhost:8000/api/docs/
 - **API Schema**: http://localhost:8000/api/schema/
@@ -109,10 +111,14 @@ nextjs-django-tutors/
 │   ├── src/
 │   │   ├── app/           # Next.js App Router pages
 │   │   │   ├── tutors/    # Tutors listing page
+│   │   │   ├── bookings/  # User bookings page
+│   │   │   ├── admin/     # Admin dashboard page
 │   │   │   └── globals.css # Tailwind CSS-first config
 │   │   ├── components/
-│   │   │   ├── features/  # Feature components (TutorCard)
-│   │   │   └── ui/        # Base UI components (shadcn-style)
+│   │   │   ├── features/  # Feature components (TutorCard, BookingsClient)
+│   │   │   ├── admin/     # Admin components (TutorsTable, BookingsTable)
+│   │   │   └── ui/        # Base UI components (Button, Dialog, Tabs, Table)
+│   │   ├── hooks/         # Custom React hooks (useMediaQuery)
 │   │   ├── lib/
 │   │   │   ├── api/       # Manual API client functions
 │   │   │   └── api-client.ts # Custom fetch for orval

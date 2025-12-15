@@ -5,6 +5,7 @@ import { useCallback } from 'react';
 
 import { TutorWizard } from '@/components/features/tutor-wizard';
 import { toast } from '@/components/ui/toast';
+import { useTutorDraftsCreate } from '@/generated/api/tutor-drafts/tutor-drafts';
 import type { TutorProfileData } from '@/lib/schemas/tutor-profile';
 
 /**
@@ -12,15 +13,18 @@ import type { TutorProfileData } from '@/lib/schemas/tutor-profile';
  */
 export default function CreateTutorPage() {
   const router = useRouter();
+  const { mutateAsync: createDraft } = useTutorDraftsCreate();
 
   const handleSubmit = useCallback(
-    async (_data: TutorProfileData) => {
+    async (data: TutorProfileData) => {
       try {
-        // TODO: Send _data to API when endpoint is ready
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await createDraft({
+          data: {
+            data: data,
+            current_step: 4,
+          },
+        });
 
-        // Clear localStorage draft on success
         localStorage.removeItem('tutor-profile-draft');
 
         toast({
@@ -29,7 +33,6 @@ export default function CreateTutorPage() {
           variant: 'success',
         });
 
-        // Redirect after short delay
         setTimeout(() => {
           router.push('/tutors');
         }, 2000);
@@ -42,7 +45,7 @@ export default function CreateTutorPage() {
         });
       }
     },
-    [router]
+    [router, createDraft]
   );
 
   return (

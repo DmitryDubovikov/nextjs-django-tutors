@@ -13,6 +13,11 @@ Includes additional fields for the detail view.
  */
 export interface TutorDetail {
   readonly id: number;
+  /**
+   * URL-friendly identifier for the tutor
+   * @pattern ^[-a-zA-Z0-9_]+$
+   */
+  readonly slug: string;
   /** Return the tutor's full name. */
   readonly full_name: string;
   /** Return the tutor's avatar URL. */
@@ -33,6 +38,24 @@ export interface TutorDetail {
   subjects: string[];
   /** Whether the tutor's credentials have been verified */
   is_verified?: boolean;
+  /**
+   * Average rating from 0 to 5
+   * @pattern ^-?\d{0,1}(?:\.\d{0,2})?$
+   */
+  rating?: string;
+  /**
+   * Number of reviews
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  reviews_count?: number;
+  /**
+   * City or region
+   * @maxLength 100
+   */
+  location?: string;
+  /** Teaching formats: ['online', 'offline'] */
+  formats: string[];
   readonly created_at: string;
   /** Return the tutor's email. */
   readonly email: string;

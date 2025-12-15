@@ -14,4 +14,5 @@ urlpatterns = [
     # API endpoints
     path("api/", include("apps.core.urls")),
     path("api/", include("apps.tutors.urls")),
+    path("api/", include("apps.bookings.urls")),
 ]

@@ -6,7 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './booking';
+export * from './bookingRequest';
+export * from './bookingsListParams';
+export * from './createBooking';
+export * from './createBookingRequest';
+export * from './paginatedBookingList';
+export * from './paginatedTutorDraftList';
 export * from './paginatedTutorList';
+export * from './patchedBookingRequest';
+export * from './patchedTutorDraftRequest';
+export * from './statusEnum';
 export * from './tutor';
 export * from './tutorDetail';
+export * from './tutorDraft';
+export * from './tutorDraftRequest';
+export * from './tutorDraftsListParams';
 export * from './tutorsListParams';
+export * from './uploadCreateBody';
