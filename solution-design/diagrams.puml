@@ -1,0 +1,170 @@
+@startuml component
+title System Architecture - Tutors Marketplace MVP
+
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
+
+package "Client" {
+    [Browser] as browser
+}
+
+package "Frontend (Next.js 15)" {
+    [App Router\nPages & Layouts] as pages
+    [React Components\nUI Kit + Features] as components
+    [TanStack Query\nServer State] as query
+    [Generated API Client\n(Orval)] as client
+}
+
+package "Backend (Django 5.2)" {
+    [DRF ViewSets\nREST API] as api
+    [Serializers\nValidation] as serializers
+    [Models\nBusiness Logic] as models
+    [OpenAPI Schema\n(drf-spectacular)] as schema
+}
+
+package "Data Layer" {
+    database "PostgreSQL 17" as db
+    database "Redis 7.4\nCache" as redis
+    storage "MinIO\nFile Storage" as minio
+}
+
+browser --> pages : HTTPS
+pages --> components
+components --> query
+query --> client
+client --> api : REST/JSON
+api --> serializers
+serializers --> models
+models --> db
+models --> redis : cache
+api --> minio : file upload
+schema ..> client : generates types
+
+@enduml
+
+
+@startuml class
+title Domain Model - Tutors Marketplace MVP
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+
+class User {
+    +id: UUID
+    +email: string
+    +first_name: string
+    +last_name: string
+    +user_type: enum
+    +avatar: string?
+    +phone: string?
+    +created_at: datetime
+}
+
+class Tutor {
+    +id: int
+    +user: User [1:1]
+    +slug: string
+    +headline: string
+    +bio: text
+    +hourly_rate: decimal
+    +subjects: json[]
+    +rating: decimal
+    +reviews_count: int
+    +location: string
+    +formats: json[]
+    +is_verified: bool
+    +created_at: datetime
+}
+
+class TutorDraft {
+    +id: int
+    +user: User [1:1]
+    +data: json
+    +current_step: int
+    +updated_at: datetime
+}
+
+class Booking {
+    +id: int
+    +tutor: Tutor [FK]
+    +student: User [FK]
+    +scheduled_at: datetime
+    +duration_minutes: int
+    +status: enum
+    +price: decimal
+    +notes: text
+    +created_at: datetime
+}
+
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    CANCELLED
+    COMPLETED
+}
+
+enum UserType {
+    STUDENT
+    TUTOR
+}
+
+User "1" -- "0..1" Tutor : has profile
+User "1" -- "0..1" TutorDraft : has draft
+User "1" -- "*" Booking : books as student
+Tutor "1" -- "*" Booking : receives
+Booking --> BookingStatus
+User --> UserType
+
+@enduml
+
+
+@startuml sequence
+title Booking Flow - Create Lesson Booking
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor Student
+participant "TutorCard\nComponent" as card
+participant "TanStack\nQuery" as query
+participant "API Client\n(Orval)" as client
+participant "BookingViewSet\nDjango" as api
+database "PostgreSQL" as db
+
+Student -> card : Click "Book Lesson"
+activate card
+card -> card : Open booking dialog
+card -> Student : Show date/time picker
+
+Student -> card : Select datetime\n& confirm
+card -> query : mutate(createBooking)
+activate query
+
+query -> client : POST /api/bookings/
+activate client
+
+client -> api : CreateBookingSerializer
+activate api
+
+api -> api : Validate data
+api -> api : Calculate price\n(hourly_rate * duration)
+api -> db : INSERT booking
+activate db
+db --> api : booking record
+deactivate db
+
+api --> client : 201 Created\n{booking}
+deactivate api
+
+client --> query : response
+deactivate client
+
+query -> query : Invalidate queries\n['bookings']
+query --> card : onSuccess
+deactivate query
+
+card -> card : Close dialog
+card -> Student : Show success toast
+deactivate card
+
+@enduml
