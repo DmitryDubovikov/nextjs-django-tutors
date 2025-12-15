@@ -71,3 +71,28 @@ This exports the OpenAPI schema from backend and generates TypeScript types + Ta
 ## Environment Variables
 
 Copy `.env.example` to `.env` and adjust as needed. See the example file for all available options.
+
+### Frontend Environment Variables
+
+Next.js requires its own `.env.local` file in the `frontend/` directory for server-side variables:
+
+```bash
+# Create frontend/.env.local with required variables
+cat > frontend/.env.local << 'EOF'
+# Auth.js secret (generate with: openssl rand -base64 32)
+AUTH_SECRET=<your-generated-secret>
+
+# OAuth credentials (optional, for social login)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+EOF
+```
+
+Generate `AUTH_SECRET`:
+```bash
+openssl rand -base64 32
+```
+
+> **Note**: `NEXT_PUBLIC_*` variables are read from the root `.env` file. Server-side variables like `AUTH_SECRET` must be in `frontend/.env.local`.

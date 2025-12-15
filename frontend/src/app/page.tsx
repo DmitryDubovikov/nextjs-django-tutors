@@ -1,11 +1,8 @@
 import Link from 'next/link';
 
-import { auth } from '@/auth';
 import { Header } from '@/components/features/layout/header';
 
-export default async function HomePage() {
-  const session = await auth();
-
+export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -19,14 +16,12 @@ export default async function HomePage() {
           >
             Browse Tutors
           </Link>
-          {!session && (
-            <Link
-              href="/tutors/create"
-              className="rounded-lg border border-primary bg-white px-6 py-3 font-medium text-primary transition-colors hover:bg-primary-50"
-            >
-              Become a Tutor
-            </Link>
-          )}
+          <Link
+            href="/tutors/create"
+            className="rounded-lg border border-primary bg-white px-6 py-3 font-medium text-primary transition-colors hover:bg-primary-50"
+          >
+            Become a Tutor
+          </Link>
         </div>
       </main>
     </div>
