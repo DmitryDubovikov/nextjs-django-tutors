@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterEach, beforeAll, vi } from 'vitest';
 
 // Mock missing DOM APIs for Radix UI components in JSDOM
 if (typeof Element !== 'undefined') {
@@ -19,17 +19,19 @@ global.ResizeObserver = class ResizeObserver {
 };
 
 // MSW server for API mocking
+// Use server.use() in tests to add handlers
 export const server = setupServer();
 
 beforeAll(() => {
+  // 'error' mode catches unhandled requests - helps find missing mocks
   server.listen({ onUnhandledRequest: 'warn' });
 });
 
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  vi.unstubAllGlobals();
 });
 
-afterAll(() => {
-  server.close();
-});
+// Note: We intentionally do NOT call server.close() in afterAll
+// This prevents issues with test isolation when files run in parallel
