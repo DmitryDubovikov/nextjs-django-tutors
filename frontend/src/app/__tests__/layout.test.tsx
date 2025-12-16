@@ -1,5 +1,16 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Mock next-auth to avoid 'next/server' import issues in vitest
+vi.mock('next-auth/react', () => ({
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
+// Mock api-client to avoid auth import chain
+vi.mock('@/lib/api-client', () => ({
+  setClientAccessToken: vi.fn(),
+}));
 
 import { Providers } from '../providers';
 

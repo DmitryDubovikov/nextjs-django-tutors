@@ -6,6 +6,225 @@
         "description": "API for Tutors Marketplace pet project"
     },
     "paths": {
+        "/api/auth/github/": {
+            "post": {
+                "operationId": "auth_github_create",
+                "description": "Exchange GitHub access_token for Django JWT tokens",
+                "summary": "GitHub OAuth login",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GitHubAuthRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GitHubAuthRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GitHubAuthRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Invalid token or missing data"
+                    },
+                    "401": {
+                        "description": "Failed to fetch GitHub user info"
+                    }
+                }
+            }
+        },
+        "/api/auth/google/": {
+            "post": {
+                "operationId": "auth_google_create",
+                "description": "Exchange Google id_token for Django JWT tokens",
+                "summary": "Google OAuth login",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoogleAuthRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoogleAuthRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoogleAuthRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Invalid token or missing data"
+                    },
+                    "401": {
+                        "description": "Token verification failed"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout/": {
+            "post": {
+                "operationId": "auth_logout_create",
+                "description": "Blacklist the refresh token to logout",
+                "summary": "Logout",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LogoutRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LogoutRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LogoutRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successfully logged out"
+                    },
+                    "400": {
+                        "description": "Invalid token"
+                    }
+                }
+            }
+        },
+        "/api/auth/me/": {
+            "get": {
+                "operationId": "auth_me_retrieve",
+                "description": "Get information about the currently authenticated user",
+                "summary": "Get current user",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/auth/token/refresh/": {
+            "post": {
+                "operationId": "auth_token_refresh_create",
+                "description": "Takes a refresh type JSON web token and returns an access type JSON web\ntoken if the refresh token is valid.",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRefreshRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRefreshRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRefreshRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenRefresh"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/bookings/": {
             "get": {
                 "operationId": "bookings_list",
@@ -27,10 +246,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -75,10 +291,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -115,10 +328,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -131,149 +341,6 @@
                             }
                         },
                         "description": ""
-                    }
-                }
-            },
-            "put": {
-                "operationId": "bookings_update",
-                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "bookings"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BookingRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BookingRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BookingRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Booking"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "patch": {
-                "operationId": "bookings_partial_update",
-                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "bookings"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedBookingRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedBookingRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedBookingRequest"
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Booking"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "bookings_destroy",
-                "description": "ViewSet for managing bookings.\n\nProvides CRUD operations for bookings with user-specific filtering.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "bookings"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
                     }
                 }
             }
@@ -318,10 +385,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -378,10 +442,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -438,10 +499,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -479,10 +537,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -526,10 +581,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -565,10 +617,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -621,10 +670,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -677,10 +723,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -715,10 +758,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -738,15 +778,39 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
                     "204": {
                         "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/tutor-drafts/publish/": {
+            "post": {
+                "operationId": "tutor_drafts_publish_create",
+                "description": "Converts the current user's draft into an actual tutor profile.",
+                "summary": "Publish draft as tutor profile",
+                "tags": [
+                    "tutor-drafts"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Tutor"
+                                }
+                            }
+                        },
+                        "description": ""
                     }
                 }
             }
@@ -844,10 +908,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     },
                     {}
                 ],
@@ -886,10 +947,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     },
                     {}
                 ],
@@ -928,10 +986,7 @@
                 ],
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     },
                     {}
                 ],
@@ -981,10 +1036,7 @@
                 },
                 "security": [
                     {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
+                        "jwtAuth": []
                     }
                 ],
                 "responses": {
@@ -1182,6 +1234,48 @@
                     "tutor"
                 ]
             },
+            "GitHubAuthRequest": {
+                "type": "object",
+                "description": "Serializer for GitHub OAuth authentication request.",
+                "properties": {
+                    "access_token": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "GitHub access_token from OAuth flow"
+                    }
+                },
+                "required": [
+                    "access_token"
+                ]
+            },
+            "GoogleAuthRequest": {
+                "type": "object",
+                "description": "Serializer for Google OAuth authentication request.",
+                "properties": {
+                    "id_token": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Google id_token from OAuth flow"
+                    }
+                },
+                "required": [
+                    "id_token"
+                ]
+            },
+            "LogoutRequest": {
+                "type": "object",
+                "description": "Serializer for logout request.",
+                "properties": {
+                    "refresh": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "JWT refresh token to blacklist"
+                    }
+                },
+                "required": [
+                    "refresh"
+                ]
+            },
             "PaginatedBookingList": {
                 "type": "object",
                 "required": [
@@ -1275,39 +1369,6 @@
                     }
                 }
             },
-            "PatchedBookingRequest": {
-                "type": "object",
-                "description": "Serializer for Booking model.\n\nUsed for list and retrieve operations.",
-                "properties": {
-                    "tutor": {
-                        "type": "integer",
-                        "description": "The tutor for this booking"
-                    },
-                    "scheduled_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "When the lesson is scheduled"
-                    },
-                    "duration_minutes": {
-                        "type": "integer",
-                        "maximum": 2147483647,
-                        "minimum": 0,
-                        "description": "Lesson duration in minutes"
-                    },
-                    "status": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/StatusEnum"
-                            }
-                        ],
-                        "description": "Current status of the booking\n\n* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
-                    },
-                    "notes": {
-                        "type": "string",
-                        "description": "Additional notes from student"
-                    }
-                }
-            },
             "PatchedTutorDraftRequest": {
                 "type": "object",
                 "description": "Serializer for TutorDraft model.\n\nHandles saving and retrieving tutor profile drafts.",
@@ -1332,6 +1393,56 @@
                 ],
                 "type": "string",
                 "description": "* `pending` - Pending\n* `confirmed` - Confirmed\n* `cancelled` - Cancelled\n* `completed` - Completed"
+            },
+            "TokenRefresh": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "refresh": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "access",
+                    "refresh"
+                ]
+            },
+            "TokenRefreshRequest": {
+                "type": "object",
+                "properties": {
+                    "refresh": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "refresh"
+                ]
+            },
+            "TokenResponse": {
+                "type": "object",
+                "description": "Serializer for JWT token response.",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "JWT access token"
+                    },
+                    "refresh": {
+                        "type": "string",
+                        "description": "JWT refresh token"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/User"
+                    }
+                },
+                "required": [
+                    "access",
+                    "refresh",
+                    "user"
+                ]
             },
             "Tutor": {
                 "type": "object",
@@ -1582,17 +1693,66 @@
                         "description": "Current wizard step (0-4)"
                     }
                 }
+            },
+            "User": {
+                "type": "object",
+                "description": "Serializer for user information returned in auth responses.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "readOnly": true,
+                        "title": "Email address"
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "avatar": {
+                        "type": "string",
+                        "format": "uri",
+                        "readOnly": true
+                    },
+                    "user_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UserTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "avatar",
+                    "email",
+                    "first_name",
+                    "id",
+                    "last_name",
+                    "user_type"
+                ]
+            },
+            "UserTypeEnum": {
+                "enum": [
+                    "student",
+                    "tutor"
+                ],
+                "type": "string",
+                "description": "* `student` - Student\n* `tutor` - Tutor"
             }
         },
         "securitySchemes": {
-            "basicAuth": {
+            "jwtAuth": {
                 "type": "http",
-                "scheme": "basic"
-            },
-            "cookieAuth": {
-                "type": "apiKey",
-                "in": "cookie",
-                "name": "sessionid"
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
             }
         }
     }

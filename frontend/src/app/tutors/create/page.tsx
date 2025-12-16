@@ -5,25 +5,28 @@ import { useCallback } from 'react';
 
 import { TutorWizard } from '@/components/features/tutor-wizard';
 import { toast } from '@/components/ui/toast';
-import { useTutorDraftsCreate } from '@/generated/api/tutor-drafts/tutor-drafts';
+import {
+  useTutorDraftsCreate,
+  useTutorDraftsPublishCreate,
+} from '@/generated/api/tutor-drafts/tutor-drafts';
 import type { TutorProfileData } from '@/lib/schemas/tutor-profile';
 
-/**
- * Page for creating a new tutor profile using the multi-step wizard.
- */
 export default function CreateTutorPage() {
   const router = useRouter();
-  const { mutateAsync: createDraft } = useTutorDraftsCreate();
+  const { mutateAsync: saveDraft } = useTutorDraftsCreate();
+  const { mutateAsync: publishDraft } = useTutorDraftsPublishCreate();
 
   const handleSubmit = useCallback(
     async (data: TutorProfileData) => {
       try {
-        await createDraft({
+        await saveDraft({
           data: {
             data: data,
             current_step: 4,
           },
         });
+
+        await publishDraft();
 
         localStorage.removeItem('tutor-profile-draft');
 
@@ -45,7 +48,7 @@ export default function CreateTutorPage() {
         });
       }
     },
-    [router, createDraft]
+    [router, saveDraft, publishDraft]
   );
 
   return (

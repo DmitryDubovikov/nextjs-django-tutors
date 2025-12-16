@@ -13,7 +13,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .filters import TutorFilter
 from .models import Tutor, TutorDraft
-from .serializers import TutorDetailSerializer, TutorDraftSerializer, TutorSerializer
+from .serializers import (
+    TutorDetailSerializer,
+    TutorDraftSerializer,
+    TutorPublishSerializer,
+    TutorSerializer,
+)
 
 
 @extend_schema_view(
@@ -177,3 +182,18 @@ class TutorDraftViewSet(viewsets.ModelViewSet):
             {"detail": "No draft found"},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+    @extend_schema(
+        summary="Publish draft as tutor profile",
+        description="Converts the current user's draft into an actual tutor profile.",
+        tags=["tutor-drafts"],
+        request=None,
+        responses={201: TutorSerializer},
+    )
+    @action(detail=False, methods=["post"])
+    def publish(self, request):
+        """Publish draft to create a tutor profile."""
+        serializer = TutorPublishSerializer(data={}, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        tutor = serializer.save()
+        return Response(TutorSerializer(tutor).data, status=status.HTTP_201_CREATED)
