@@ -6,6 +6,21 @@
 import { auth } from '@/auth';
 
 /**
+ * Client-side access token storage.
+ * Synced from SessionProvider via AuthTokenSync component in providers.tsx.
+ * This avoids HTTP requests to /api/auth/session on every API call.
+ */
+let clientAccessToken: string | null = null;
+
+/**
+ * Set the client-side access token.
+ * Called by AuthTokenSync component when session changes.
+ */
+export function setClientAccessToken(token: string | null): void {
+  clientAccessToken = token;
+}
+
+/**
  * Response shape returned by customFetch.
  * Use this type when calling customFetch directly (not via orval-generated hooks).
  */
@@ -39,8 +54,9 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
     ...fetchOptions?.headers,
   };
 
-  // On server-side, add auth header from session
+  // Add auth header from session
   if (typeof window === 'undefined') {
+    // Server-side: use auth() to get session
     try {
       const session = await auth();
       if (session?.accessToken) {
@@ -48,6 +64,11 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
       }
     } catch {
       // Auth not available, continue without auth header
+    }
+  } else {
+    // Client-side: use synced token (no HTTP request)
+    if (clientAccessToken) {
+      (headers as Record<string, string>).Authorization = `Bearer ${clientAccessToken}`;
     }
   }
 

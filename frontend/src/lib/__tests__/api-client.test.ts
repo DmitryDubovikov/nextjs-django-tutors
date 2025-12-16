@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { server } from '../../../tests/setup';
 import { createMockSession } from '../../../tests/test-utils';
-import { ApiError, type ApiResponse, customFetch } from '../api-client';
+import { ApiError, type ApiResponse, customFetch, setClientAccessToken } from '../api-client';
 
 // Mock auth function
 const mockAuth = vi.fn();
@@ -14,6 +14,8 @@ vi.mock('@/auth', () => ({
 describe('customFetch', () => {
   beforeEach(() => {
     mockAuth.mockReset();
+    // Reset client token for test isolation
+    setClientAccessToken(null);
   });
 
   afterEach(() => {
@@ -111,6 +113,75 @@ describe('customFetch', () => {
       await customFetch('/api/tutors/');
 
       expect(requestReceived).toBe(true);
+    });
+
+    it('adds Authorization header on client-side when token is set', async () => {
+      // Simulate client-side by having window defined
+      vi.stubGlobal('window', {});
+
+      setClientAccessToken('client-test-token');
+
+      let capturedAuthHeader: string | null = null;
+      server.use(
+        http.get('*/api/tutors/', ({ request }) => {
+          capturedAuthHeader = request.headers.get('Authorization');
+          return HttpResponse.json({ data: 'test' });
+        })
+      );
+
+      await customFetch('/api/tutors/');
+
+      expect(capturedAuthHeader).toBe('Bearer client-test-token');
+    });
+
+    it('does not add Authorization header on client-side when no token is set', async () => {
+      // Simulate client-side by having window defined
+      vi.stubGlobal('window', {});
+
+      // Token is null (reset in beforeEach)
+
+      let capturedAuthHeader: string | null = null;
+      server.use(
+        http.get('*/api/tutors/', ({ request }) => {
+          capturedAuthHeader = request.headers.get('Authorization');
+          return HttpResponse.json({ data: 'test' });
+        })
+      );
+
+      await customFetch('/api/tutors/');
+
+      expect(capturedAuthHeader).toBeNull();
+    });
+
+    it('updates Authorization header when token changes on client-side', async () => {
+      // Simulate client-side by having window defined
+      vi.stubGlobal('window', {});
+
+      // First request with token A
+      setClientAccessToken('token-a');
+
+      let capturedAuthHeader: string | null = null;
+      server.use(
+        http.get('*/api/tutors/', ({ request }) => {
+          capturedAuthHeader = request.headers.get('Authorization');
+          return HttpResponse.json({ data: 'test' });
+        })
+      );
+
+      await customFetch('/api/tutors/');
+      expect(capturedAuthHeader).toBe('Bearer token-a');
+
+      // Update token
+      setClientAccessToken('token-b');
+
+      await customFetch('/api/tutors/');
+      expect(capturedAuthHeader).toBe('Bearer token-b');
+
+      // Clear token (logout)
+      setClientAccessToken(null);
+
+      await customFetch('/api/tutors/');
+      expect(capturedAuthHeader).toBeNull();
     });
   });
 

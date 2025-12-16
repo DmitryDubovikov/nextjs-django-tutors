@@ -27,6 +27,7 @@ import type {
 import type {
   PaginatedTutorDraftList,
   PatchedTutorDraftRequest,
+  Tutor,
   TutorDraft,
   TutorDraftRequest,
   TutorDraftsListParams
@@ -684,6 +685,89 @@ export const useTutorDraftsClearDestroy = <TError = unknown,
       > => {
 
       const mutationOptions = getTutorDraftsClearDestroyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Converts the current user's draft into an actual tutor profile.
+ * @summary Publish draft as tutor profile
+ */
+export type tutorDraftsPublishCreateResponse201 = {
+  data: Tutor
+  status: 201
+}
+    
+export type tutorDraftsPublishCreateResponseSuccess = (tutorDraftsPublishCreateResponse201) & {
+  headers: Headers;
+};
+;
+
+export type tutorDraftsPublishCreateResponse = (tutorDraftsPublishCreateResponseSuccess)
+
+export const getTutorDraftsPublishCreateUrl = () => {
+
+
+  
+
+  return `/api/tutor-drafts/publish/`
+}
+
+export const tutorDraftsPublishCreate = async ( options?: RequestInit): Promise<tutorDraftsPublishCreateResponse> => {
+  
+  return customFetch<tutorDraftsPublishCreateResponse>(getTutorDraftsPublishCreateUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getTutorDraftsPublishCreateMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof tutorDraftsPublishCreate>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof tutorDraftsPublishCreate>>, TError,void, TContext> => {
+
+const mutationKey = ['tutorDraftsPublishCreate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof tutorDraftsPublishCreate>>, void> = () => {
+          
+
+          return  tutorDraftsPublishCreate(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TutorDraftsPublishCreateMutationResult = NonNullable<Awaited<ReturnType<typeof tutorDraftsPublishCreate>>>
+    
+    export type TutorDraftsPublishCreateMutationError = unknown
+
+    /**
+ * @summary Publish draft as tutor profile
+ */
+export const useTutorDraftsPublishCreate = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof tutorDraftsPublishCreate>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof tutorDraftsPublishCreate>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getTutorDraftsPublishCreateMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

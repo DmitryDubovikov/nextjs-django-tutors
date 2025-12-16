@@ -57,13 +57,17 @@ describe('bookings page utilities', () => {
     });
 
     it('handles midnight correctly', () => {
-      const result = formatDateTime('2024-12-15T00:00:00Z');
+      // Use local midnight to avoid timezone issues
+      const localMidnight = new Date(2024, 11, 15, 0, 0, 0);
+      const result = formatDateTime(localMidnight.toISOString());
 
       expect(result.time).toMatch(/12:00 AM/);
     });
 
     it('handles noon correctly', () => {
-      const result = formatDateTime('2024-12-15T12:00:00Z');
+      // Use local noon to avoid timezone issues
+      const localNoon = new Date(2024, 11, 15, 12, 0, 0);
+      const result = formatDateTime(localNoon.toISOString());
 
       expect(result.time).toMatch(/12:00 PM/);
     });

@@ -103,3 +103,66 @@ class TutorDraftSerializer(serializers.ModelSerializer):
         instance.current_step = validated_data.get("current_step", instance.current_step)
         instance.save()
         return instance
+
+
+class TutorPublishSerializer(serializers.Serializer):
+    """
+    Serializer for publishing a tutor draft to create an actual Tutor profile.
+
+    Validates draft data and creates Tutor + updates User in a transaction.
+    """
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        try:
+            draft = TutorDraft.objects.get(user=user)
+        except TutorDraft.DoesNotExist as err:
+            raise serializers.ValidationError("No draft found to publish") from err
+
+        if Tutor.objects.filter(user=user).exists():
+            raise serializers.ValidationError("Tutor profile already exists")
+
+        data = draft.data
+        required = ["firstName", "lastName", "bio", "subjects", "defaultHourlyRate", "city"]
+        missing = [f for f in required if not data.get(f)]
+        if missing:
+            raise serializers.ValidationError(f"Missing required fields: {', '.join(missing)}")
+
+        attrs["draft"] = draft
+        attrs["data"] = data
+        return attrs
+
+    def create(self, validated_data):
+        from django.db import transaction
+
+        draft = validated_data["draft"]
+        data = validated_data["data"]
+        user = self.context["request"].user
+
+        with transaction.atomic():
+            user.first_name = data.get("firstName", "")
+            user.last_name = data.get("lastName", "")
+            user.phone = data.get("phone", "")
+            user.avatar = data.get("avatarUrl", "")
+            user.user_type = "tutor"
+            user.save()
+
+            subjects = [s.get("name") for s in data.get("subjects", []) if s.get("name")]
+            teaching_format = data.get("teachingFormat", "online")
+            formats = ["online", "offline"] if teaching_format == "both" else [teaching_format]
+
+            headline = f"Tutor in {', '.join(subjects[:3])}" if subjects else "Professional Tutor"
+
+            tutor = Tutor.objects.create(
+                user=user,
+                headline=headline,
+                bio=data.get("bio", ""),
+                hourly_rate=data.get("defaultHourlyRate", 0),
+                subjects=subjects,
+                location=data.get("city", ""),
+                formats=formats,
+            )
+
+            draft.delete()
+
+        return tutor
