@@ -23,12 +23,14 @@ export async function Header() {
         <div className="flex items-center gap-4">
           {session ? (
             <>
-              <Link
-                href="/tutors/create"
-                className="hidden rounded-lg border border-primary bg-white px-4 py-2 font-medium text-primary text-sm transition-colors hover:bg-primary-50 md:block"
-              >
-                Become a Tutor
-              </Link>
+              {session.user.userType !== 'tutor' && (
+                <Link
+                  href="/tutors/create"
+                  className="hidden rounded-lg border border-primary bg-white px-4 py-2 font-medium text-primary text-sm transition-colors hover:bg-primary-50 md:block"
+                >
+                  Become a Tutor
+                </Link>
+              )}
               <UserMenu />
             </>
           ) : (

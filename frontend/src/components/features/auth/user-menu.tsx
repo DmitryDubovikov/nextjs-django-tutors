@@ -71,13 +71,15 @@ export function UserMenu() {
             </div>
 
             <nav className="py-1">
-              <Link
-                href="/tutors/create"
-                onClick={closeMenu}
-                className="block px-4 py-2 text-foreground text-sm transition-colors hover:bg-muted-50"
-              >
-                Become a Tutor
-              </Link>
+              {session.user.userType !== 'tutor' && (
+                <Link
+                  href="/tutors/create"
+                  onClick={closeMenu}
+                  className="block px-4 py-2 text-foreground text-sm transition-colors hover:bg-muted-50"
+                >
+                  Become a Tutor
+                </Link>
+              )}
               <Link
                 href="/bookings"
                 onClick={closeMenu}
