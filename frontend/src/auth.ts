@@ -5,6 +5,61 @@
  * exchanging OAuth tokens for Django JWT tokens.
  */
 
+// Monkey-patch fetch with retry logic for OAuth domains.
+// This is a safety net for intermittent network issues in Docker.
+// Primary fix is IPv6 disabled via docker-compose sysctls.
+const OAUTH_DOMAINS = ['googleapis.com', 'accounts.google.com', 'github.com'];
+const MAX_RETRIES = 3;
+const originalFetch = globalThis.fetch;
+
+function getUrlFromInput(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+function isOAuthUrl(url: string): boolean {
+  return OAUTH_DOMAINS.some((domain) => url.includes(domain));
+}
+
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  url?: string
+): Promise<Response> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      return await originalFetch(input, init);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(
+        `[Auth] Attempt ${attempt + 1}/${MAX_RETRIES} failed for ${url}:`,
+        lastError.message
+      );
+
+      if (attempt < MAX_RETRIES - 1) {
+        const delay = 500 * 2 ** attempt;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError ?? new Error('All fetch retries failed');
+}
+
+globalThis.fetch = async function patchedFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const url = getUrlFromInput(input);
+  if (!isOAuthUrl(url)) {
+    return originalFetch(input, init);
+  }
+  return fetchWithRetry(input, init, url);
+};
+
 import NextAuth, { type User } from 'next-auth';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
@@ -64,14 +119,15 @@ async function refreshAccessToken(token: {
   backendUser?: typeof token.backendUser;
 }> {
   try {
-    const res = await fetch(`${INTERNAL_API_URL}/api/auth/token/refresh/`, {
+    const url = `${INTERNAL_API_URL}/api/auth/token/refresh/`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh: token.refreshToken }),
     });
 
     if (!res.ok) {
-      console.error('Token refresh failed:', res.status);
+      console.error('[Auth] Token refresh failed:', res.status);
       return {
         ...token,
         error: 'RefreshAccessTokenError',
@@ -86,7 +142,7 @@ async function refreshAccessToken(token: {
       backendUser: token.backendUser,
     };
   } catch (error) {
-    console.error('Token refresh error:', error);
+    console.error('[Auth] Token refresh error:', error);
     return {
       ...token,
       error: 'RefreshAccessTokenError',
@@ -117,7 +173,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             : { access_token: account.access_token };
 
         try {
-          const res = await fetch(`${INTERNAL_API_URL}${endpoint}`, {
+          const url = `${INTERNAL_API_URL}${endpoint}`;
+          const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -125,7 +182,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (!res.ok) {
             const errorText = await res.text();
-            console.error('Backend auth failed:', errorText);
+            console.error('[Auth] Backend auth failed:', errorText);
             token.error = 'BackendAuthError';
             return token;
           }
@@ -137,7 +194,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.backendUser = data.user;
           token.error = undefined;
         } catch (error) {
-          console.error('Backend auth error:', error);
+          console.error('[Auth] Backend auth error:', error);
           token.error = 'BackendAuthError';
         }
         return token;
