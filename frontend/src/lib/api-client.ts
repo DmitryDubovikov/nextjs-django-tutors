@@ -1,9 +1,28 @@
 /**
  * Custom fetch client for API requests.
  * Used as the mutator for orval-generated hooks.
+ *
+ * Token refresh strategy:
+ * - All token refresh happens through NextAuth (single source of truth)
+ * - This avoids race conditions with Django's ROTATE_REFRESH_TOKENS=True
+ * - On 401, we trigger NextAuth session refresh via getSession()
  */
 
 import { auth } from '@/auth';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Maximum number of retry attempts on 401 */
+const MAX_RETRY_COUNT = 2;
+
+/** Base delay for retry exponential backoff (ms) */
+const RETRY_BASE_DELAY_MS = 100;
+
+// =============================================================================
+// Client-side Token Storage
+// =============================================================================
 
 /**
  * Client-side token storage.
@@ -11,19 +30,12 @@ import { auth } from '@/auth';
  * This avoids HTTP requests to /api/auth/session on every API call.
  */
 let clientAccessToken: string | null = null;
-let clientRefreshToken: string | null = null;
 
 /**
- * Promise deduplication for token refresh.
+ * Promise deduplication for session refresh.
  * All concurrent refresh requests share the same Promise.
  */
-let refreshPromise: Promise<string | null> | null = null;
-
-/**
- * Callback to notify AuthTokenSync about token updates.
- * Set by AuthTokenSync component.
- */
-let onTokenRefreshed: ((accessToken: string, refreshToken: string) => void) | null = null;
+let sessionRefreshPromise: Promise<string | null> | null = null;
 
 /**
  * Set the client-side tokens.
@@ -33,14 +45,23 @@ export function setClientAccessToken(token: string | null): void {
   clientAccessToken = token;
 }
 
-export function setClientRefreshToken(token: string | null): void {
-  clientRefreshToken = token;
+export function setClientRefreshToken(_token: string | null): void {
+  // Refresh token is stored in NextAuth session, not used directly by api-client
 }
 
-export function setTokenRefreshCallback(
-  callback: ((accessToken: string, refreshToken: string) => void) | null
-): void {
-  onTokenRefreshed = callback;
+// =============================================================================
+// Session Refresh Callbacks
+// =============================================================================
+
+/**
+ * Callback to trigger NextAuth session refresh.
+ * Set by AuthTokenSync component.
+ * Returns the new access token if successful.
+ */
+let onSessionRefreshNeeded: (() => Promise<string | null>) | null = null;
+
+export function setSessionRefreshCallback(callback: (() => Promise<string | null>) | null): void {
+  onSessionRefreshNeeded = callback;
 }
 
 /**
@@ -54,67 +75,50 @@ export function setRefreshFailedCallback(callback: (() => void) | null): void {
 }
 
 /**
- * Internal refresh implementation.
+ * Trigger NextAuth session refresh via callback.
+ * Uses Promise deduplication - all concurrent calls share the same Promise.
+ * Returns the new access token if successful, null otherwise.
  */
-async function doRefreshToken(): Promise<string | null> {
-  if (!clientRefreshToken) return null;
+async function triggerSessionRefresh(): Promise<string | null> {
+  if (!onSessionRefreshNeeded) {
+    return null;
+  }
 
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${apiUrl}/api/auth/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh: clientRefreshToken }),
-    });
+  // Return existing refresh promise if one is in progress (deduplication)
+  if (sessionRefreshPromise) {
+    return sessionRefreshPromise;
+  }
 
-    if (!response.ok) {
-      console.error('[api-client] Token refresh failed:', response.status);
-      // Refresh token invalid - user needs to re-authenticate
-      if (response.status === 401 && onRefreshFailed) {
+  sessionRefreshPromise = (async () => {
+    try {
+      const newToken = await onSessionRefreshNeeded?.();
+
+      if (newToken) {
+        return newToken;
+      }
+
+      if (onRefreshFailed) {
+        onRefreshFailed();
+      }
+      return null;
+    } catch {
+      if (onRefreshFailed) {
         onRefreshFailed();
       }
       return null;
     }
-
-    const data = await response.json();
-    const newAccessToken = data.access;
-    const newRefreshToken = data.refresh || clientRefreshToken;
-
-    // Update local tokens
-    clientAccessToken = newAccessToken;
-    clientRefreshToken = newRefreshToken;
-
-    // Notify AuthTokenSync to update NextAuth session
-    if (onTokenRefreshed) {
-      onTokenRefreshed(newAccessToken, newRefreshToken);
-    }
-
-    return newAccessToken;
-  } catch (error) {
-    console.error('[api-client] Token refresh error:', error);
-    return null;
-  }
-}
-
-/**
- * Attempt to refresh the access token directly via Django API.
- * Uses Promise deduplication - all concurrent calls share the same Promise.
- * Returns the new access token if successful, null otherwise.
- */
-async function tryRefreshToken(): Promise<string | null> {
-  // Return existing refresh promise if one is in progress (deduplication)
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-
-  refreshPromise = doRefreshToken();
+  })();
 
   try {
-    return await refreshPromise;
+    return await sessionRefreshPromise;
   } finally {
-    refreshPromise = null;
+    sessionRefreshPromise = null;
   }
 }
+
+// =============================================================================
+// API Response Types
+// =============================================================================
 
 /**
  * Response shape returned by customFetch.
@@ -131,6 +135,10 @@ const API_BASE_URL =
   typeof window === 'undefined'
     ? process.env.INTERNAL_API_URL || 'http://backend:8000'
     : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// =============================================================================
+// Custom Fetch
+// =============================================================================
 
 /**
  * Custom fetch function for orval-generated hooks.
@@ -180,11 +188,15 @@ export async function customFetch<T>(
     headers,
   });
 
-  // 401 Interceptor - attempt token refresh and retry (client-side only, max 1 retry)
-  if (response.status === 401 && typeof window !== 'undefined' && _retryCount === 0) {
-    const newToken = await tryRefreshToken();
+  // 401 Interceptor - trigger NextAuth session refresh and retry (client-side only)
+  if (response.status === 401 && typeof window !== 'undefined' && _retryCount < MAX_RETRY_COUNT) {
+    const newToken = await triggerSessionRefresh();
+
     if (newToken) {
-      return customFetch(url, options, 1);
+      // Exponential backoff delay before retry
+      const delay = RETRY_BASE_DELAY_MS * 2 ** _retryCount;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return customFetch(url, options, _retryCount + 1);
     }
   }
 
@@ -211,6 +223,10 @@ export async function customFetch<T>(
     headers: response.headers,
   } as T;
 }
+
+// =============================================================================
+// API Error Class
+// =============================================================================
 
 /**
  * API error class with status and data.

@@ -26,6 +26,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import (
+    CredentialsLoginSerializer,
+    CredentialsRegisterSerializer,
     GitHubAuthSerializer,
     GoogleAuthSerializer,
     LogoutSerializer,
@@ -432,9 +434,14 @@ class GitHubAuthView(APIView):
 class LogoutView(APIView):
     """
     Blacklist a refresh token to logout the user.
+
+    Uses AllowAny permission because:
+    - Logout should work even if access token is expired
+    - The refresh token in the request body is sufficient for authorization
+    - Blacklisting an already-invalid token is harmless
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         summary="Logout",
@@ -442,7 +449,7 @@ class LogoutView(APIView):
         request=LogoutSerializer,
         responses={
             204: OpenApiResponse(description="Successfully logged out"),
-            400: OpenApiResponse(description="Invalid token"),
+            400: OpenApiResponse(description="Invalid request body"),
         },
     )
     def post(self, request):
@@ -454,12 +461,9 @@ class LogoutView(APIView):
         try:
             token = RefreshToken(serializer.validated_data["refresh"])
             token.blacklist()
-        except TokenError as e:
-            logger.warning("Invalid refresh token during logout: %s", str(e))
-            return Response(
-                {"error": "Invalid token"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        except TokenError:
+            # Token already invalid or blacklisted - this is fine for logout
+            pass
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -479,3 +483,141 @@ class CurrentUserView(APIView):
     def get(self, request):
         """Return the current user's information."""
         return Response(UserSerializer(request.user).data)
+
+
+def is_credentials_auth_enabled() -> bool:
+    """Check if credentials authentication is enabled via environment variable."""
+    return settings.ENABLE_CREDENTIALS_AUTH
+
+
+class CredentialsLoginView(APIView):
+    """
+    Login with email and password.
+
+    Only available when ENABLE_CREDENTIALS_AUTH=true.
+    Useful for testing and development without OAuth providers.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Login with credentials",
+        description="Login with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.",
+        request=CredentialsLoginSerializer,
+        responses={
+            200: TokenResponseSerializer,
+            400: OpenApiResponse(description="Invalid credentials or missing data"),
+            403: OpenApiResponse(description="Credentials auth is disabled"),
+        },
+    )
+    def post(self, request):
+        """Login with email and password."""
+        if not is_credentials_auth_enabled():
+            return Response(
+                {"error": "Credentials authentication is disabled"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = CredentialsLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            logger.warning("Login attempt for non-existent user: %s", email)
+            return Response(
+                {"error": "Invalid email or password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.check_password(password):
+            logger.warning("Invalid password for user: %s", email)
+            return Response(
+                {"error": "Invalid email or password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.is_active:
+            return Response(
+                {"error": "User account is disabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info("User logged in via credentials: %s", email)
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(user).data,
+            }
+        )
+
+
+class CredentialsRegisterView(APIView):
+    """
+    Register a new user with email and password.
+
+    Only available when ENABLE_CREDENTIALS_AUTH=true.
+    Useful for testing and development without OAuth providers.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Register with credentials",
+        description="Register a new user with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.",
+        request=CredentialsRegisterSerializer,
+        responses={
+            201: TokenResponseSerializer,
+            400: OpenApiResponse(description="Invalid data or user already exists"),
+            403: OpenApiResponse(description="Credentials auth is disabled"),
+        },
+    )
+    def post(self, request):
+        """Register a new user with email and password."""
+        if not is_credentials_auth_enabled():
+            return Response(
+                {"error": "Credentials authentication is disabled"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = CredentialsRegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+        first_name = serializer.validated_data.get("first_name", "")
+        last_name = serializer.validated_data.get("last_name", "")
+
+        # Check if user already exists
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"error": "User with this email already exists"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create user
+        user = User.objects.create_user(
+            username=email,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+        )
+
+        logger.info("New user registered via credentials: %s", email)
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )

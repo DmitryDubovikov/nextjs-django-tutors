@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CredentialsLoginRequest,
+  CredentialsRegisterRequest,
   GitHubAuthRequest,
   GoogleAuthRequest,
   LogoutRequest,
@@ -234,6 +236,102 @@ export const useAuthGoogleCreate = <TError = void | void,
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * Login with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.
+ * @summary Login with credentials
+ */
+export type authLoginCreateResponse200 = {
+  data: TokenResponse
+  status: 200
+}
+
+export type authLoginCreateResponse400 = {
+  data: void
+  status: 400
+}
+
+export type authLoginCreateResponse403 = {
+  data: void
+  status: 403
+}
+    
+export type authLoginCreateResponseSuccess = (authLoginCreateResponse200) & {
+  headers: Headers;
+};
+export type authLoginCreateResponseError = (authLoginCreateResponse400 | authLoginCreateResponse403) & {
+  headers: Headers;
+};
+
+export type authLoginCreateResponse = (authLoginCreateResponseSuccess | authLoginCreateResponseError)
+
+export const getAuthLoginCreateUrl = () => {
+
+
+  
+
+  return `/api/auth/login/`
+}
+
+export const authLoginCreate = async (credentialsLoginRequest: CredentialsLoginRequest, options?: RequestInit): Promise<authLoginCreateResponse> => {
+  
+  return customFetch<authLoginCreateResponse>(getAuthLoginCreateUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      credentialsLoginRequest,)
+  }
+);}
+
+
+
+
+export const getAuthLoginCreateMutationOptions = <TError = void | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLoginCreate>>, TError,{data: CredentialsLoginRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof authLoginCreate>>, TError,{data: CredentialsLoginRequest}, TContext> => {
+
+const mutationKey = ['authLoginCreate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authLoginCreate>>, {data: CredentialsLoginRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  authLoginCreate(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthLoginCreateMutationResult = NonNullable<Awaited<ReturnType<typeof authLoginCreate>>>
+    export type AuthLoginCreateMutationBody = CredentialsLoginRequest
+    export type AuthLoginCreateMutationError = void | void
+
+    /**
+ * @summary Login with credentials
+ */
+export const useAuthLoginCreate = <TError = void | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLoginCreate>>, TError,{data: CredentialsLoginRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof authLoginCreate>>,
+        TError,
+        {data: CredentialsLoginRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getAuthLoginCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Blacklist the refresh token to logout
  * @summary Logout
  */
@@ -437,6 +535,102 @@ export function useAuthMeRetrieve<TData = Awaited<ReturnType<typeof authMeRetrie
 
 
 /**
+ * Register a new user with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.
+ * @summary Register with credentials
+ */
+export type authRegisterCreateResponse201 = {
+  data: TokenResponse
+  status: 201
+}
+
+export type authRegisterCreateResponse400 = {
+  data: void
+  status: 400
+}
+
+export type authRegisterCreateResponse403 = {
+  data: void
+  status: 403
+}
+    
+export type authRegisterCreateResponseSuccess = (authRegisterCreateResponse201) & {
+  headers: Headers;
+};
+export type authRegisterCreateResponseError = (authRegisterCreateResponse400 | authRegisterCreateResponse403) & {
+  headers: Headers;
+};
+
+export type authRegisterCreateResponse = (authRegisterCreateResponseSuccess | authRegisterCreateResponseError)
+
+export const getAuthRegisterCreateUrl = () => {
+
+
+  
+
+  return `/api/auth/register/`
+}
+
+export const authRegisterCreate = async (credentialsRegisterRequest: CredentialsRegisterRequest, options?: RequestInit): Promise<authRegisterCreateResponse> => {
+  
+  return customFetch<authRegisterCreateResponse>(getAuthRegisterCreateUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      credentialsRegisterRequest,)
+  }
+);}
+
+
+
+
+export const getAuthRegisterCreateMutationOptions = <TError = void | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authRegisterCreate>>, TError,{data: CredentialsRegisterRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof authRegisterCreate>>, TError,{data: CredentialsRegisterRequest}, TContext> => {
+
+const mutationKey = ['authRegisterCreate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authRegisterCreate>>, {data: CredentialsRegisterRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  authRegisterCreate(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthRegisterCreateMutationResult = NonNullable<Awaited<ReturnType<typeof authRegisterCreate>>>
+    export type AuthRegisterCreateMutationBody = CredentialsRegisterRequest
+    export type AuthRegisterCreateMutationError = void | void
+
+    /**
+ * @summary Register with credentials
+ */
+export const useAuthRegisterCreate = <TError = void | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authRegisterCreate>>, TError,{data: CredentialsRegisterRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof authRegisterCreate>>,
+        TError,
+        {data: CredentialsRegisterRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getAuthRegisterCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Takes a refresh type JSON web token and returns an access type JSON web
 token if the refresh token is valid.
  */

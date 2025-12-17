@@ -11,6 +11,8 @@ export * from './bookingRequest';
 export * from './bookingsListParams';
 export * from './createBooking';
 export * from './createBookingRequest';
+export * from './credentialsLoginRequest';
+export * from './credentialsRegisterRequest';
 export * from './gitHubAuthRequest';
 export * from './googleAuthRequest';
 export * from './logoutRequest';

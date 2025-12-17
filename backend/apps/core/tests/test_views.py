@@ -358,7 +358,7 @@ class TestLogoutView:
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_logout_with_invalid_token(self, api_client):
-        """POST /api/auth/logout/ returns 400 for invalid token."""
+        """POST /api/auth/logout/ returns 204 even for invalid token (forgiving approach)."""
         user = UserFactory()
         api_client.force_authenticate(user)
 
@@ -368,8 +368,8 @@ class TestLogoutView:
             format="json",
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid token" in response.data["error"]
+        # Forgiving approach: invalid tokens are silently ignored
+        assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_logout_without_refresh_token(self, api_client):
         """POST /api/auth/logout/ returns 400 without refresh token."""
@@ -381,8 +381,8 @@ class TestLogoutView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "refresh" in response.data
 
-    def test_logout_requires_authentication(self, api_client):
-        """POST /api/auth/logout/ requires authentication."""
+    def test_logout_without_authentication(self, api_client):
+        """POST /api/auth/logout/ works without authentication (forgiving approach)."""
         refresh = RefreshToken.for_user(UserFactory())
 
         response = api_client.post(
@@ -391,10 +391,11 @@ class TestLogoutView:
             format="json",
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        # Forgiving approach: logout works even without auth if token is valid
+        assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_logout_with_already_blacklisted_token(self, api_client):
-        """POST /api/auth/logout/ returns 400 for already blacklisted token."""
+        """POST /api/auth/logout/ returns 204 for already blacklisted token (idempotent)."""
         user = UserFactory()
         api_client.force_authenticate(user)
 
@@ -404,14 +405,15 @@ class TestLogoutView:
         # Blacklist it once
         refresh.blacklist()
 
-        # Try to blacklist again
+        # Try to blacklist again - should succeed silently (idempotent)
         response = api_client.post(
             "/api/auth/logout/",
             {"refresh": refresh_token},
             format="json",
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Forgiving approach: already blacklisted tokens are silently ignored
+        assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
 @pytest.mark.django_db

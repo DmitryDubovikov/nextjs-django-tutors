@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
-import { SignInButton } from '@/components/features/auth/sign-in-button';
+import { LoginContent } from './login-content';
 
 export const metadata: Metadata = {
   title: 'Sign In - Tutors Marketplace',
@@ -17,6 +17,9 @@ export default async function LoginPage() {
     redirect('/');
   }
 
+  // Check if credentials auth is enabled
+  const credentialsEnabled = process.env.ENABLE_CREDENTIALS_AUTH === 'true';
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
@@ -27,16 +30,7 @@ export default async function LoginPage() {
           <p className="mt-2 text-muted-foreground">Sign in to continue</p>
         </div>
 
-        <div className="rounded-xl border border-muted-200 bg-white p-6 shadow-sm">
-          <div className="space-y-3">
-            <SignInButton provider="google" />
-            <SignInButton provider="github" />
-          </div>
-
-          <p className="mt-6 text-center text-muted-foreground text-sm">
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </p>
-        </div>
+        <LoginContent credentialsEnabled={credentialsEnabled} />
 
         <p className="mt-6 text-center text-muted-foreground text-sm">
           <Link href="/" className="text-primary hover:underline">

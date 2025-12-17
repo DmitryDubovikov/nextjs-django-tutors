@@ -114,6 +114,60 @@
                 }
             }
         },
+        "/api/auth/login/": {
+            "post": {
+                "operationId": "auth_login_create",
+                "description": "Login with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.",
+                "summary": "Login with credentials",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsLoginRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsLoginRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsLoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Invalid credentials or missing data"
+                    },
+                    "403": {
+                        "description": "Credentials auth is disabled"
+                    }
+                }
+            }
+        },
         "/api/auth/logout/": {
             "post": {
                 "operationId": "auth_logout_create",
@@ -145,14 +199,15 @@
                 "security": [
                     {
                         "jwtAuth": []
-                    }
+                    },
+                    {}
                 ],
                 "responses": {
                     "204": {
                         "description": "Successfully logged out"
                     },
                     "400": {
-                        "description": "Invalid token"
+                        "description": "Invalid request body"
                     }
                 }
             }
@@ -180,6 +235,60 @@
                             }
                         },
                         "description": ""
+                    }
+                }
+            }
+        },
+        "/api/auth/register/": {
+            "post": {
+                "operationId": "auth_register_create",
+                "description": "Register a new user with email and password. Only available when ENABLE_CREDENTIALS_AUTH=true.",
+                "summary": "Register with credentials",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsRegisterRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsRegisterRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialsRegisterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Invalid data or user already exists"
+                    },
+                    "403": {
+                        "description": "Credentials auth is disabled"
                     }
                 }
             }
@@ -1232,6 +1341,60 @@
                 "required": [
                     "scheduled_at",
                     "tutor"
+                ]
+            },
+            "CredentialsLoginRequest": {
+                "type": "object",
+                "description": "Serializer for email/password login request.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "description": "User email address"
+                    },
+                    "password": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 1,
+                        "description": "User password"
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "CredentialsRegisterRequest": {
+                "type": "object",
+                "description": "Serializer for email/password registration request.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "description": "User email address"
+                    },
+                    "password": {
+                        "type": "string",
+                        "writeOnly": true,
+                        "minLength": 8,
+                        "description": "User password (minimum 8 characters)"
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "description": "User first name",
+                        "maxLength": 150
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "description": "User last name",
+                        "maxLength": 150
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
                 ]
             },
             "GitHubAuthRequest": {

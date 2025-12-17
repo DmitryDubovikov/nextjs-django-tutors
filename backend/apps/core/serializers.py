@@ -49,3 +49,38 @@ class LogoutSerializer(serializers.Serializer):
     """Serializer for logout request."""
 
     refresh = serializers.CharField(help_text="JWT refresh token to blacklist")
+
+
+class CredentialsLoginSerializer(serializers.Serializer):
+    """Serializer for email/password login request."""
+
+    email = serializers.EmailField(help_text="User email address")
+    password = serializers.CharField(
+        write_only=True,
+        help_text="User password",
+        style={"input_type": "password"},
+    )
+
+
+class CredentialsRegisterSerializer(serializers.Serializer):
+    """Serializer for email/password registration request."""
+
+    email = serializers.EmailField(help_text="User email address")
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        help_text="User password (minimum 8 characters)",
+        style={"input_type": "password"},
+    )
+    first_name = serializers.CharField(
+        max_length=150,
+        required=False,
+        allow_blank=True,
+        help_text="User first name",
+    )
+    last_name = serializers.CharField(
+        max_length=150,
+        required=False,
+        allow_blank=True,
+        help_text="User last name",
+    )
