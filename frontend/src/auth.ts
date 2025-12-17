@@ -99,6 +99,25 @@ const INTERNAL_API_URL = process.env.INTERNAL_API_URL || 'http://backend:8000';
 const ACCESS_TOKEN_LIFETIME_MS = 14 * 60 * 1000;
 
 /**
+ * Handle session update from client (e.g., after interceptor refreshes tokens).
+ * Returns updated token with new access/refresh tokens.
+ */
+function handleSessionUpdate(
+  token: { accessToken?: string; refreshToken?: string; error?: string },
+  updateData: { accessToken?: string; refreshToken?: string }
+): typeof token {
+  const result = { ...token };
+  if (updateData.accessToken) {
+    result.accessToken = updateData.accessToken;
+    result.error = undefined;
+  }
+  if (updateData.refreshToken) {
+    result.refreshToken = updateData.refreshToken;
+  }
+  return result;
+}
+
+/**
  * Refresh the access token using the refresh token.
  */
 async function refreshAccessToken(token: {
@@ -163,7 +182,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, trigger, session: updateData }) {
+      // Handle session update from client (e.g., after interceptor refreshes tokens)
+      if (trigger === 'update' && updateData) {
+        const data = updateData as { accessToken?: string; refreshToken?: string };
+        return handleSessionUpdate(token, data);
+      }
+
       // Initial sign in - exchange OAuth token for Django JWT
       if (account) {
         const endpoint = account.provider === 'google' ? '/api/auth/google/' : '/api/auth/github/';
@@ -202,6 +227,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Return previous token if it hasn't expired yet
       if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
+        return token;
+      }
+
+      // Don't retry refresh if it already failed - prevents infinite loop
+      if (token.error === 'RefreshAccessTokenError') {
         return token;
       }
 

@@ -6,18 +6,114 @@
 import { auth } from '@/auth';
 
 /**
- * Client-side access token storage.
+ * Client-side token storage.
  * Synced from SessionProvider via AuthTokenSync component in providers.tsx.
  * This avoids HTTP requests to /api/auth/session on every API call.
  */
 let clientAccessToken: string | null = null;
+let clientRefreshToken: string | null = null;
 
 /**
- * Set the client-side access token.
+ * Promise deduplication for token refresh.
+ * All concurrent refresh requests share the same Promise.
+ */
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Callback to notify AuthTokenSync about token updates.
+ * Set by AuthTokenSync component.
+ */
+let onTokenRefreshed: ((accessToken: string, refreshToken: string) => void) | null = null;
+
+/**
+ * Set the client-side tokens.
  * Called by AuthTokenSync component when session changes.
  */
 export function setClientAccessToken(token: string | null): void {
   clientAccessToken = token;
+}
+
+export function setClientRefreshToken(token: string | null): void {
+  clientRefreshToken = token;
+}
+
+export function setTokenRefreshCallback(
+  callback: ((accessToken: string, refreshToken: string) => void) | null
+): void {
+  onTokenRefreshed = callback;
+}
+
+/**
+ * Callback to trigger signOut when refresh fails.
+ * Set by AuthTokenSync component.
+ */
+let onRefreshFailed: (() => void) | null = null;
+
+export function setRefreshFailedCallback(callback: (() => void) | null): void {
+  onRefreshFailed = callback;
+}
+
+/**
+ * Internal refresh implementation.
+ */
+async function doRefreshToken(): Promise<string | null> {
+  if (!clientRefreshToken) return null;
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiUrl}/api/auth/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: clientRefreshToken }),
+    });
+
+    if (!response.ok) {
+      console.error('[api-client] Token refresh failed:', response.status);
+      // Refresh token invalid - user needs to re-authenticate
+      if (response.status === 401 && onRefreshFailed) {
+        onRefreshFailed();
+      }
+      return null;
+    }
+
+    const data = await response.json();
+    const newAccessToken = data.access;
+    const newRefreshToken = data.refresh || clientRefreshToken;
+
+    // Update local tokens
+    clientAccessToken = newAccessToken;
+    clientRefreshToken = newRefreshToken;
+
+    // Notify AuthTokenSync to update NextAuth session
+    if (onTokenRefreshed) {
+      onTokenRefreshed(newAccessToken, newRefreshToken);
+    }
+
+    return newAccessToken;
+  } catch (error) {
+    console.error('[api-client] Token refresh error:', error);
+    return null;
+  }
+}
+
+/**
+ * Attempt to refresh the access token directly via Django API.
+ * Uses Promise deduplication - all concurrent calls share the same Promise.
+ * Returns the new access token if successful, null otherwise.
+ */
+async function tryRefreshToken(): Promise<string | null> {
+  // Return existing refresh promise if one is in progress (deduplication)
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = doRefreshToken();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
 }
 
 /**
@@ -42,8 +138,14 @@ const API_BASE_URL =
  *
  * For server-side rendering, this automatically adds JWT auth headers
  * from the user's session.
+ *
+ * @param _retryCount - Internal retry counter (do not set manually)
  */
-export async function customFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function customFetch<T>(
+  url: string,
+  options?: RequestInit,
+  _retryCount = 0
+): Promise<T> {
   const fetchOptions = options;
   // Build full URL
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
@@ -77,6 +179,14 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
     ...fetchOptions,
     headers,
   });
+
+  // 401 Interceptor - attempt token refresh and retry (client-side only, max 1 retry)
+  if (response.status === 401 && typeof window !== 'undefined' && _retryCount === 0) {
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      return customFetch(url, options, 1);
+    }
+  }
 
   // Handle errors
   if (!response.ok) {
