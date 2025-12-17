@@ -170,6 +170,10 @@ GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")
 GITHUB_CLIENT_SECRET = env("GITHUB_CLIENT_SECRET", default="")
 
+# Credentials Authentication (email/password login)
+# Set to True to enable login/register endpoints for testing
+ENABLE_CREDENTIALS_AUTH = env.bool("ENABLE_CREDENTIALS_AUTH", default=False)
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Tutors Marketplace API",

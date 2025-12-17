@@ -4,22 +4,33 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider, signOut, useSession } from 'next-auth/react';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Toaster } from '@/components/ui/toast';
 import {
   setClientAccessToken,
   setClientRefreshToken,
   setRefreshFailedCallback,
-  setTokenRefreshCallback,
+  setSessionRefreshCallback,
 } from '@/lib/api-client';
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
-/** Time buffer before token expiry to trigger refresh (2 minutes) */
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Time buffer before token expiry to trigger proactive refresh (2 minutes) */
 const TOKEN_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+
+/** Minimum interval between refresh attempts to prevent loops */
+const REFRESH_COOLDOWN_MS = 2000; // 2 seconds
+
+// =============================================================================
+// Helpers
+// =============================================================================
 
 /**
  * Decode JWT payload to get expiration time.
@@ -36,76 +47,150 @@ function getTokenExpiry(token: string): number | null {
   }
 }
 
+// =============================================================================
+// AuthTokenSync Component
+// =============================================================================
+
 /**
  * Syncs tokens from SessionProvider to the api-client module.
  * Also proactively refreshes the token before it expires.
  */
 function AuthTokenSync() {
   const { data: session, update } = useSession();
+  // Track if we're currently refreshing to prevent infinite loops
+  // Using ref instead of state to avoid triggering re-renders
+  const isRefreshingRef = useRef(false);
+  // Track the last token we tried to refresh to avoid refreshing the same token repeatedly
+  const lastRefreshedTokenRef = useRef<string | null>(null);
 
   // Sync tokens to api-client
   useEffect(() => {
-    setClientAccessToken(session?.accessToken ?? null);
-    setClientRefreshToken(session?.refreshToken ?? null);
-  }, [session?.accessToken, session?.refreshToken]);
+    const accessToken = session?.accessToken ?? null;
+    const refreshToken = session?.refreshToken ?? null;
 
-  // Register callback for api-client to notify us about token refresh
-  // This updates the NextAuth session when interceptor refreshes tokens
+    setClientAccessToken(accessToken);
+    setClientRefreshToken(refreshToken);
+  }, [session]);
+
+  // Register callback for api-client to trigger session refresh on 401
+  // This uses NextAuth as single source of truth for token refresh
   useEffect(() => {
-    setTokenRefreshCallback((newAccessToken, newRefreshToken) => {
-      // Update NextAuth session with new tokens
-      update({
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      });
+    setSessionRefreshCallback(async () => {
+      // Trigger NextAuth session update which will refresh tokens server-side
+      const updatedSession = await update();
+
+      // Check if refresh was successful
+      if (updatedSession?.error) {
+        return null;
+      }
+
+      if (updatedSession?.accessToken) {
+        // Immediately update the client token so the retry uses the new token
+        setClientAccessToken(updatedSession.accessToken);
+        if (updatedSession.refreshToken) {
+          setClientRefreshToken(updatedSession.refreshToken);
+        }
+        return updatedSession.accessToken;
+      }
+
+      return null;
     });
 
-    return () => setTokenRefreshCallback(null);
+    return () => setSessionRefreshCallback(null);
   }, [update]);
 
   // Register callback for when refresh token is invalid
   // This signs out the user to force re-authentication
   useEffect(() => {
     setRefreshFailedCallback(() => {
-      console.warn('[AuthTokenSync] Refresh token invalid, signing out...');
       signOut({ callbackUrl: '/login' });
     });
 
     return () => setRefreshFailedCallback(null);
   }, []);
 
-  // Memoize update to avoid unnecessary effect re-runs
-  const triggerRefresh = useCallback(() => {
-    update();
-  }, [update]);
+  // Auto sign-out when session has RefreshAccessTokenError
+  // This handles the case where refresh token is blacklisted/invalid
+  // and ensures user is redirected to login immediately
+  useEffect(() => {
+    if (session?.error === 'RefreshAccessTokenError') {
+      signOut({ callbackUrl: '/login' });
+    }
+  }, [session?.error]);
 
   // Proactive token refresh before expiry
   useEffect(() => {
     // Don't try to refresh if there's already an error (prevents infinite loop)
-    if (session?.error) return;
-    if (!session?.accessToken) return;
+    if (session?.error) {
+      return;
+    }
+    if (!session?.accessToken) {
+      return;
+    }
 
     const expiry = getTokenExpiry(session.accessToken);
-    if (!expiry) return;
+    if (!expiry) {
+      return;
+    }
 
     const now = Date.now();
     const timeUntilExpiry = expiry - now;
 
+    // Skip if we already tried to refresh this exact token
+    if (lastRefreshedTokenRef.current === session.accessToken) {
+      return;
+    }
+
     // Token already expired or about to expire - refresh immediately
     if (timeUntilExpiry <= TOKEN_REFRESH_BUFFER_MS) {
-      triggerRefresh();
+      // Check if already refreshing
+      if (isRefreshingRef.current) {
+        return;
+      }
+
+      isRefreshingRef.current = true;
+      lastRefreshedTokenRef.current = session.accessToken ?? null;
+
+      update()
+        .catch(() => {
+          // Error handled by session error check
+        })
+        .finally(() => {
+          // Delay before allowing next refresh
+          setTimeout(() => {
+            isRefreshingRef.current = false;
+          }, REFRESH_COOLDOWN_MS);
+        });
       return;
     }
 
     // Schedule refresh before expiry
     const refreshIn = timeUntilExpiry - TOKEN_REFRESH_BUFFER_MS;
-    const timer = setTimeout(triggerRefresh, refreshIn);
+
+    const timer = setTimeout(() => {
+      if (isRefreshingRef.current) {
+        return;
+      }
+
+      isRefreshingRef.current = true;
+      lastRefreshedTokenRef.current = session.accessToken ?? null;
+
+      update().finally(() => {
+        setTimeout(() => {
+          isRefreshingRef.current = false;
+        }, REFRESH_COOLDOWN_MS);
+      });
+    }, refreshIn);
 
     return () => clearTimeout(timer);
-  }, [session?.accessToken, session?.error, triggerRefresh]);
+  }, [session?.accessToken, session?.error, update]);
 
   return null;
 }
+
+// =============================================================================
+// Providers Component
+// =============================================================================
 
 export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(
@@ -121,7 +206,12 @@ export function Providers({ children }: ProvidersProps) {
   );
 
   return (
-    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
+    // Note: refetchInterval is disabled to avoid race conditions with token rotation.
+    // Token refresh is handled by:
+    // 1. Proactive refresh in AuthTokenSync (2 min before expiry)
+    // 2. 401 interceptor in api-client.ts
+    // 3. refetchOnWindowFocus for when user returns to the tab
+    <SessionProvider refetchOnWindowFocus={true}>
       <AuthTokenSync />
       <QueryClientProvider client={queryClient}>
         <NuqsAdapter>{children}</NuqsAdapter>

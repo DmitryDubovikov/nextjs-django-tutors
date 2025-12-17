@@ -11,7 +11,7 @@ vi.mock('next-auth/react', () => ({
 vi.mock('@/lib/api-client', () => ({
   setClientAccessToken: vi.fn(),
   setClientRefreshToken: vi.fn(),
-  setTokenRefreshCallback: vi.fn(),
+  setSessionRefreshCallback: vi.fn(),
   setRefreshFailedCallback: vi.fn(),
 }));
 
