@@ -25,10 +25,10 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import {
-  useBookingsCancelCreate,
-  useBookingsConfirmCreate,
-  useBookingsList,
-} from '@/generated/api/bookings/bookings';
+  useAdminBookingsCancelCreate,
+  useAdminBookingsConfirmCreate,
+  useAdminBookingsList,
+} from '@/generated/api/admin/admin';
 import type { Booking, BookingRequest } from '@/generated/schemas';
 
 import { TablePagination } from './table-pagination';
@@ -61,16 +61,15 @@ function formatDateTime(dateString: string) {
 }
 
 export function BookingsTable() {
-  const { data, isLoading, refetch } = useBookingsList();
-  const { mutate: confirmBooking, isPending: isConfirming } = useBookingsConfirmCreate();
-  const { mutate: cancelBooking, isPending: isCancelling } = useBookingsCancelCreate();
+  const { data, isLoading, refetch } = useAdminBookingsList();
+  const { mutate: confirmBooking, isPending: isConfirming } = useAdminBookingsConfirmCreate();
+  const { mutate: cancelBooking, isPending: isCancelling } = useAdminBookingsCancelCreate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
 
   const handleConfirm = (id: number) => {
-    // TODO: Update Orval types if confirm endpoint doesn't require body
     confirmBooking(
-      { id: String(id), data: {} as BookingRequest },
+      { id, data: {} as BookingRequest },
       {
         onSuccess: () => {
           toast({ title: 'Booking confirmed', variant: 'success' });
@@ -84,9 +83,8 @@ export function BookingsTable() {
   };
 
   const handleCancel = (id: number) => {
-    // TODO: Update Orval types if cancel endpoint doesn't require body
     cancelBooking(
-      { id: String(id), data: {} as BookingRequest },
+      { id, data: {} as BookingRequest },
       {
         onSuccess: () => {
           toast({ title: 'Booking cancelled', variant: 'success' });

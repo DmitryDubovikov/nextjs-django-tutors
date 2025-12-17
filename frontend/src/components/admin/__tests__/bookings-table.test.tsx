@@ -8,10 +8,10 @@ import type { Booking } from '@/generated/schemas';
 import { BookingsTable } from '../bookings-table';
 
 // Mock the API hooks
-vi.mock('@/generated/api/bookings/bookings', () => ({
-  useBookingsList: vi.fn(),
-  useBookingsConfirmCreate: vi.fn(),
-  useBookingsCancelCreate: vi.fn(),
+vi.mock('@/generated/api/admin/admin', () => ({
+  useAdminBookingsList: vi.fn(),
+  useAdminBookingsConfirmCreate: vi.fn(),
+  useAdminBookingsCancelCreate: vi.fn(),
 }));
 
 vi.mock('@/components/ui/toast', () => ({
@@ -20,10 +20,10 @@ vi.mock('@/components/ui/toast', () => ({
 
 import { toast } from '@/components/ui/toast';
 import {
-  useBookingsCancelCreate,
-  useBookingsConfirmCreate,
-  useBookingsList,
-} from '@/generated/api/bookings/bookings';
+  useAdminBookingsCancelCreate,
+  useAdminBookingsConfirmCreate,
+  useAdminBookingsList,
+} from '@/generated/api/admin/admin';
 
 describe('BookingsTable', () => {
   const mockBookings: Booking[] = [
@@ -85,11 +85,11 @@ describe('BookingsTable', () => {
     vi.clearAllMocks();
 
     // Default mocks for mutation hooks
-    vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+    vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);
-    vi.mocked(useBookingsCancelCreate).mockReturnValue({
+    vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);
@@ -101,7 +101,7 @@ describe('BookingsTable', () => {
 
   describe('loading state', () => {
     it('shows skeleton when loading', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: undefined,
         isLoading: true,
         error: null,
@@ -117,19 +117,19 @@ describe('BookingsTable', () => {
 
   describe('data rendering', () => {
     beforeEach(() => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: mockBookings } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -199,19 +199,19 @@ describe('BookingsTable', () => {
 
   describe('search functionality', () => {
     beforeEach(() => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: mockBookings } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -265,19 +265,19 @@ describe('BookingsTable', () => {
 
   describe('action buttons visibility', () => {
     beforeEach(() => {
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
     });
 
     it('shows Confirm button for pending bookings', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
@@ -290,7 +290,7 @@ describe('BookingsTable', () => {
     });
 
     it('shows Cancel button for pending bookings', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
@@ -303,7 +303,7 @@ describe('BookingsTable', () => {
     });
 
     it('does not show Confirm button for confirmed bookings', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[1]] } },
         isLoading: false,
         error: null,
@@ -317,7 +317,7 @@ describe('BookingsTable', () => {
     });
 
     it('does not show action buttons for completed bookings', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[2]] } },
         isLoading: false,
         error: null,
@@ -336,19 +336,19 @@ describe('BookingsTable', () => {
       const user = userEvent.setup();
       const confirmMutate = vi.fn();
 
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: confirmMutate,
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -365,21 +365,21 @@ describe('BookingsTable', () => {
       const user = userEvent.setup();
       const refetch = vi.fn();
 
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch,
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: (_: unknown, options: { onSuccess?: () => void }) => {
           options?.onSuccess?.();
         },
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -399,21 +399,21 @@ describe('BookingsTable', () => {
     it('shows error toast on confirm failure', async () => {
       const user = userEvent.setup();
 
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: (_: unknown, options: { onError?: () => void }) => {
           options?.onError?.();
         },
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -430,19 +430,19 @@ describe('BookingsTable', () => {
     });
 
     it('disables Confirm button when confirming', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: true,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -458,19 +458,19 @@ describe('BookingsTable', () => {
       const user = userEvent.setup();
       const cancelMutate = vi.fn();
 
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: cancelMutate,
         isPending: false,
       } as any);
@@ -487,19 +487,19 @@ describe('BookingsTable', () => {
       const user = userEvent.setup();
       const refetch = vi.fn();
 
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch,
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: (_: unknown, options: { onSuccess?: () => void }) => {
           options?.onSuccess?.();
         },
@@ -519,19 +519,19 @@ describe('BookingsTable', () => {
     });
 
     it('disables Cancel button when cancelling', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [mockBookings[0]] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: true,
       } as any);
@@ -544,19 +544,19 @@ describe('BookingsTable', () => {
 
   describe('empty state', () => {
     it('shows empty message when no bookings', () => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: [] } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
@@ -569,19 +569,19 @@ describe('BookingsTable', () => {
 
   describe('sorting functionality', () => {
     beforeEach(() => {
-      vi.mocked(useBookingsList).mockReturnValue({
+      vi.mocked(useAdminBookingsList).mockReturnValue({
         data: { data: { results: mockBookings } },
         isLoading: false,
         error: null,
         refetch: vi.fn(),
       } as any);
 
-      vi.mocked(useBookingsConfirmCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsConfirmCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);
 
-      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+      vi.mocked(useAdminBookingsCancelCreate).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
       } as any);

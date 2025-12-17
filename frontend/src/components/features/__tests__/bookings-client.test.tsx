@@ -1,11 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useSession } from 'next-auth/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Booking } from '@/generated/schemas';
 
 import { BookingsClient } from '../bookings-client';
+
+// Mock next-auth/react
+vi.mock('next-auth/react', () => ({
+  useSession: vi.fn(),
+}));
 
 // Mock dependencies
 vi.mock('@/generated/api/bookings/bookings', () => ({
@@ -97,6 +103,16 @@ describe('BookingsClient', () => {
       },
     });
     vi.clearAllMocks();
+
+    // Default mock for useSession - authenticated user
+    vi.mocked(useSession).mockReturnValue({
+      data: {
+        user: { id: '1', name: 'Test User', email: 'test@example.com' },
+        expires: '2099-12-31',
+      },
+      status: 'authenticated',
+      update: vi.fn(),
+    } as any);
 
     // Default mock for useBookingsCancelCreate
     vi.mocked(useBookingsCancelCreate).mockReturnValue({

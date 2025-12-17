@@ -1,4 +1,4 @@
-.PHONY: help up down logs lint lint-frontend lint-backend test test-frontend test-backend check generate-schema generate-api migrate shell-frontend shell-backend
+.PHONY: help up down logs lint lint-frontend lint-backend test test-frontend test-backend check generate-schema generate-api migrate shell-frontend shell-backend format format-frontend format-backend
 
 # Default target
 help:
@@ -9,6 +9,11 @@ help:
 	@echo "    make down            - Stop all services"
 	@echo "    make logs            - View logs (follow mode)"
 	@echo "    make build           - Rebuild containers"
+	@echo ""
+	@echo "  Formatting:"
+	@echo "    make format          - Format all code"
+	@echo "    make format-frontend - Format frontend code (Biome)"
+	@echo "    make format-backend  - Format backend code (Ruff)"
 	@echo ""
 	@echo "  Linting:"
 	@echo "    make lint            - Run all linters"
@@ -49,6 +54,21 @@ logs:
 
 build:
 	docker compose build
+
+# =============================================================================
+# Formatting
+# =============================================================================
+
+format: format-frontend format-backend
+	@echo "✅ All code formatted!"
+
+format-frontend:
+	@echo "🎨 Formatting frontend code (Biome)..."
+	docker compose exec frontend npm run format
+
+format-backend:
+	@echo "🎨 Formatting backend code (Ruff)..."
+	docker compose exec backend ruff format .
 
 # =============================================================================
 # Linting

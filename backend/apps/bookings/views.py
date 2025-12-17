@@ -5,7 +5,7 @@ Views for bookings app.
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Booking
@@ -133,6 +133,94 @@ class BookingViewSet(viewsets.ModelViewSet):
                 {"error": "Only the tutor can complete this booking"},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        if booking.status != Booking.Status.CONFIRMED:
+            return Response(
+                {"error": "Can only complete confirmed bookings"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = Booking.Status.COMPLETED
+        booking.save()
+        return Response(BookingSerializer(booking).data)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all bookings (admin)",
+        description="Returns all bookings in the system. Requires staff permissions.",
+        tags=["admin"],
+    ),
+    retrieve=extend_schema(
+        summary="Get booking details (admin)",
+        description="Returns detailed information about a specific booking. Requires staff permissions.",
+        tags=["admin"],
+    ),
+)
+class AdminBookingViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for admin management of all bookings.
+
+    Requires is_staff=True. Provides full CRUD access to all bookings.
+    """
+
+    permission_classes = [IsAdminUser]
+    queryset = Booking.objects.all().select_related("tutor__user", "student")
+    serializer_class = BookingSerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    @extend_schema(
+        summary="Cancel a booking (admin)",
+        description="Admin can cancel any pending or confirmed booking.",
+        tags=["admin"],
+        responses={200: BookingSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel a booking (admin)."""
+        booking = self.get_object()
+
+        if booking.status not in [Booking.Status.PENDING, Booking.Status.CONFIRMED]:
+            return Response(
+                {"error": "Cannot cancel this booking"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = Booking.Status.CANCELLED
+        booking.save()
+        return Response(BookingSerializer(booking).data)
+
+    @extend_schema(
+        summary="Confirm a booking (admin)",
+        description="Admin can confirm any pending booking.",
+        tags=["admin"],
+        responses={200: BookingSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def confirm(self, request, pk=None):
+        """Confirm a booking (admin)."""
+        booking = self.get_object()
+
+        if booking.status != Booking.Status.PENDING:
+            return Response(
+                {"error": "Can only confirm pending bookings"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = Booking.Status.CONFIRMED
+        booking.save()
+        return Response(BookingSerializer(booking).data)
+
+    @extend_schema(
+        summary="Complete a booking (admin)",
+        description="Admin can mark any confirmed booking as completed.",
+        tags=["admin"],
+        responses={200: BookingSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        """Mark a booking as completed (admin)."""
+        booking = self.get_object()
 
         if booking.status != Booking.Status.CONFIRMED:
             return Response(

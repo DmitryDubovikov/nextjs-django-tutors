@@ -17,4 +17,6 @@ export interface User {
   readonly last_name: string;
   readonly avatar: string;
   readonly user_type: UserTypeEnum;
+  /** Designates whether the user can log into this admin site. */
+  readonly is_staff: boolean;
 }

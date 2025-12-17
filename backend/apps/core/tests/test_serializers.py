@@ -56,6 +56,17 @@ class TestUserSerializer:
         assert serializer.data["last_name"] == ""
         assert serializer.data["avatar"] == ""
 
+    def test_serializes_is_staff_field(self):
+        """UserSerializer includes is_staff field."""
+        user = UserFactory(is_staff=False)
+        admin = UserFactory(is_staff=True)
+
+        user_serializer = UserSerializer(user)
+        admin_serializer = UserSerializer(admin)
+
+        assert user_serializer.data["is_staff"] is False
+        assert admin_serializer.data["is_staff"] is True
+
 
 class TestGoogleAuthSerializer:
     """Tests for GoogleAuthSerializer."""

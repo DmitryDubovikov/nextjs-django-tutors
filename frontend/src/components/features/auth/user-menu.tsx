@@ -71,6 +71,15 @@ export function UserMenu() {
             </div>
 
             <nav className="py-1">
+              {session.user.isStaff && (
+                <Link
+                  href="/admin"
+                  onClick={closeMenu}
+                  className="block px-4 py-2 text-foreground text-sm transition-colors hover:bg-muted-50"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
               {session.user.userType !== 'tutor' && (
                 <Link
                   href="/tutors/create"

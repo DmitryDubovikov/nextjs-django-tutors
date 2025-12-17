@@ -37,3 +37,9 @@ class StudentUserFactory(UserFactory):
     """Factory for User model with student user_type."""
 
     user_type = User.UserType.STUDENT
+
+
+class AdminUserFactory(UserFactory):
+    """Factory for User model with is_staff=True (business admin)."""
+
+    is_staff = True
