@@ -10,6 +10,9 @@ vi.mock('next-auth/react', () => ({
 // Mock api-client to avoid auth import chain
 vi.mock('@/lib/api-client', () => ({
   setClientAccessToken: vi.fn(),
+  setClientRefreshToken: vi.fn(),
+  setTokenRefreshCallback: vi.fn(),
+  setRefreshFailedCallback: vi.fn(),
 }));
 
 import { Providers } from '../providers';
