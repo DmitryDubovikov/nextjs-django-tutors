@@ -1,5 +1,6 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
@@ -163,7 +164,16 @@ function BookingCard({
 }
 
 export function BookingsClient() {
-  const { data, isLoading, error, refetch } = useBookingsList();
+  const { status } = useSession();
+  const isSessionReady = status === 'authenticated';
+
+  const { data, isLoading, error, refetch } = useBookingsList(undefined, {
+    query: {
+      // Don't fetch until session is loaded to avoid race condition
+      // where API request goes out before auth token is synced
+      enabled: isSessionReady,
+    },
+  });
   const { mutate: cancelBooking, isPending: isCancelling } = useBookingsCancelCreate();
 
   const handleCancel = (bookingId: number) => {
@@ -194,7 +204,8 @@ export function BookingsClient() {
     );
   };
 
-  if (isLoading) {
+  // Show loading state while session is loading or data is being fetched
+  if (!isSessionReady || isLoading) {
     return <LoadingSkeleton />;
   }
 

@@ -18,6 +18,7 @@ declare module 'next-auth' {
     user: User & {
       id: string;
       userType?: string;
+      isStaff?: boolean;
     };
   }
 }
@@ -35,6 +36,7 @@ declare module '@auth/core/jwt' {
       last_name: string;
       avatar: string;
       user_type: string;
+      is_staff: boolean;
     };
   }
 }
@@ -125,6 +127,7 @@ type RefreshResult = {
     last_name: string;
     avatar: string;
     user_type: string;
+    is_staff: boolean;
   };
 };
 
@@ -189,6 +192,7 @@ async function refreshAccessToken(token: {
     last_name: string;
     avatar: string;
     user_type: string;
+    is_staff: boolean;
   };
 }): Promise<RefreshResult> {
   const refreshTokenSuffix = getTokenSuffix(token.refreshToken);
@@ -375,6 +379,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               last_name: string;
               avatar: string;
               user_type: string;
+              is_staff: boolean;
             };
           };
 
@@ -455,6 +460,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: token.backendUser.email,
           image: token.backendUser.avatar,
           userType: token.backendUser.user_type,
+          isStaff: token.backendUser.is_staff,
         };
       }
       return session;

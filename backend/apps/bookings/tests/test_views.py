@@ -11,7 +11,7 @@ from rest_framework import status
 import pytest
 
 from apps.bookings.models import Booking
-from apps.core.tests.factories import StudentUserFactory, TutorUserFactory
+from apps.core.tests.factories import AdminUserFactory, StudentUserFactory, TutorUserFactory
 from apps.tutors.tests.factories import TutorFactory
 
 from .factories import (
@@ -413,3 +413,156 @@ class TestBookingViewSet:
         response = api_client.delete(f"/api/bookings/{booking.id}/")
 
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+class TestAdminBookingViewSet:
+    """Tests for AdminBookingViewSet."""
+
+    def test_list_requires_authentication(self, api_client):
+        """GET /api/admin/bookings/ requires authentication."""
+        response = api_client.get("/api/admin/bookings/")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_list_requires_staff_permission(self, api_client):
+        """GET /api/admin/bookings/ requires is_staff=True."""
+        student = StudentUserFactory()
+
+        api_client.force_authenticate(student)
+        response = api_client.get("/api/admin/bookings/")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_list_returns_all_bookings_for_admin(self, api_client):
+        """GET /api/admin/bookings/ returns all bookings for staff user."""
+        admin = AdminUserFactory()
+        BookingFactory.create_batch(5)
+
+        api_client.force_authenticate(admin)
+        response = api_client.get("/api/admin/bookings/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 5
+
+    def test_retrieve_booking_as_admin(self, api_client):
+        """GET /api/admin/bookings/{id}/ returns any booking for staff user."""
+        admin = AdminUserFactory()
+        booking = BookingFactory()
+
+        api_client.force_authenticate(admin)
+        response = api_client.get(f"/api/admin/bookings/{booking.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == booking.id
+
+    def test_confirm_booking_as_admin(self, api_client):
+        """POST /api/admin/bookings/{id}/confirm/ confirms any pending booking."""
+        admin = AdminUserFactory()
+        booking = BookingFactory(status=Booking.Status.PENDING)
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/confirm/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == Booking.Status.CONFIRMED
+
+        booking.refresh_from_db()
+        assert booking.status == Booking.Status.CONFIRMED
+
+    def test_confirm_only_pending_bookings(self, api_client):
+        """POST /api/admin/bookings/{id}/confirm/ only confirms pending bookings."""
+        admin = AdminUserFactory()
+        booking = ConfirmedBookingFactory()
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/confirm/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_cancel_booking_as_admin(self, api_client):
+        """POST /api/admin/bookings/{id}/cancel/ cancels any booking."""
+        admin = AdminUserFactory()
+        booking = BookingFactory(status=Booking.Status.PENDING)
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/cancel/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == Booking.Status.CANCELLED
+
+        booking.refresh_from_db()
+        assert booking.status == Booking.Status.CANCELLED
+
+    def test_cancel_confirmed_booking_as_admin(self, api_client):
+        """POST /api/admin/bookings/{id}/cancel/ can cancel confirmed booking."""
+        admin = AdminUserFactory()
+        booking = ConfirmedBookingFactory()
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/cancel/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == Booking.Status.CANCELLED
+
+    def test_cannot_cancel_completed_booking(self, api_client):
+        """POST /api/admin/bookings/{id}/cancel/ cannot cancel completed booking."""
+        admin = AdminUserFactory()
+        booking = CompletedBookingFactory()
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/cancel/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_complete_booking_as_admin(self, api_client):
+        """POST /api/admin/bookings/{id}/complete/ completes confirmed booking."""
+        admin = AdminUserFactory()
+        booking = ConfirmedBookingFactory()
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/complete/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == Booking.Status.COMPLETED
+
+        booking.refresh_from_db()
+        assert booking.status == Booking.Status.COMPLETED
+
+    def test_complete_only_confirmed_bookings(self, api_client):
+        """POST /api/admin/bookings/{id}/complete/ only completes confirmed bookings."""
+        admin = AdminUserFactory()
+        booking = BookingFactory(status=Booking.Status.PENDING)
+
+        api_client.force_authenticate(admin)
+        response = api_client.post(f"/api/admin/bookings/{booking.id}/complete/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_regular_user_cannot_access_admin_endpoints(self, api_client):
+        """Regular users cannot access admin booking endpoints."""
+        tutor_user = TutorUserFactory()
+        booking = BookingFactory()
+
+        api_client.force_authenticate(tutor_user)
+
+        assert api_client.get("/api/admin/bookings/").status_code == status.HTTP_403_FORBIDDEN
+        assert (
+            api_client.get(f"/api/admin/bookings/{booking.id}/").status_code
+            == status.HTTP_403_FORBIDDEN
+        )
+        assert (
+            api_client.post(f"/api/admin/bookings/{booking.id}/confirm/").status_code
+            == status.HTTP_403_FORBIDDEN
+        )
+        assert (
+            api_client.post(f"/api/admin/bookings/{booking.id}/cancel/").status_code
+            == status.HTTP_403_FORBIDDEN
+        )
+        assert (
+            api_client.post(f"/api/admin/bookings/{booking.id}/complete/").status_code
+            == status.HTTP_403_FORBIDDEN
+        )

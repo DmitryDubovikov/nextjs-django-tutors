@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminBookingsListParams';
 export * from './booking';
 export * from './bookingRequest';
 export * from './bookingsListParams';

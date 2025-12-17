@@ -171,7 +171,9 @@ class TestTutorFilter:
 
         user = TutorUserFactory(first_name="John", last_name="Doe")
         tutor = TutorFactory(user=user)
-        TutorFactory()  # Another tutor
+        # Use explicit non-matching names to avoid Faker generating "John" or "Johnson"
+        other_user = TutorUserFactory(first_name="Alice", last_name="Brown")
+        TutorFactory(user=other_user)
 
         queryset = Tutor.objects.all()
         filterset = TutorFilter({"q": "John"}, queryset=queryset)
@@ -185,7 +187,9 @@ class TestTutorFilter:
 
         user = TutorUserFactory(first_name="Jane", last_name="Smith")
         tutor = TutorFactory(user=user)
-        TutorFactory()
+        # Use explicit non-matching names to avoid Faker generating "Smith" or similar
+        other_user = TutorUserFactory(first_name="Bob", last_name="Wilson")
+        TutorFactory(user=other_user)
 
         queryset = Tutor.objects.all()
         filterset = TutorFilter({"q": "Smith"}, queryset=queryset)
