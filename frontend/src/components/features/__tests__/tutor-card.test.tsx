@@ -5,6 +5,7 @@ import { TutorCard, TutorCardSkeleton } from '../tutor-card';
 
 const mockTutor: Tutor = {
   id: 1,
+  user_id: 101,
   slug: 'john-doe',
   full_name: 'John Doe',
   avatar_url: 'https://example.com/avatar.jpg',

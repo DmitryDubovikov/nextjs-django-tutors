@@ -23,6 +23,11 @@ vi.mock('@/components/features/auth/user-menu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
 
+// Mock lucide-react icons
+vi.mock('lucide-react', () => ({
+  MessageCircle: () => <svg data-testid="message-circle-icon" />,
+}));
+
 describe('Header', () => {
   describe('rendering - unauthenticated', () => {
     it('renders site logo', async () => {
@@ -72,6 +77,15 @@ describe('Header', () => {
       const becomeTutorButton = screen.queryByText('Become a Tutor');
       expect(becomeTutorButton).not.toBeInTheDocument();
     });
+
+    it('does not render Messages link when not authenticated', async () => {
+      mockAuth.mockResolvedValue(null);
+
+      render(await Header());
+
+      const messagesLink = screen.queryByTitle('Messages');
+      expect(messagesLink).not.toBeInTheDocument();
+    });
   });
 
   describe('rendering - authenticated', () => {
@@ -111,6 +125,16 @@ describe('Header', () => {
 
       const signInButton = screen.queryByText('Sign in');
       expect(signInButton).not.toBeInTheDocument();
+    });
+
+    it('renders Messages link when authenticated', async () => {
+      mockAuth.mockResolvedValue(mockSession);
+
+      render(await Header());
+
+      const messagesLink = screen.getByTitle('Messages');
+      expect(messagesLink).toBeInTheDocument();
+      expect(messagesLink).toHaveAttribute('href', '/chat');
     });
 
     it('still renders site logo and navigation', async () => {

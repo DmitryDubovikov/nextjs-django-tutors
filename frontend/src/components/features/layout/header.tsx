@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 
 import { auth } from '@/auth';
@@ -31,6 +32,13 @@ export async function Header() {
                   Become a Tutor
                 </Link>
               )}
+              <a
+                href="/chat"
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Messages"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </a>
               <UserMenu />
             </>
           ) : (

@@ -60,6 +60,7 @@ describe('TutorGridClient', () => {
   const mockTutors: Tutor[] = [
     {
       id: 1,
+      user_id: 101,
       full_name: 'John Doe',
       bio: 'Math expert',
       hourly_rate: '50.00',
@@ -74,6 +75,7 @@ describe('TutorGridClient', () => {
     },
     {
       id: 2,
+      user_id: 102,
       full_name: 'Jane Smith',
       bio: 'English teacher',
       hourly_rate: '45.00',

@@ -390,6 +390,7 @@ $RECYCLE.BIN/
 
 # Claude Code configuration
 .claude/
+CLAUDE.md
 
 # Documentation (generated)
 docs/

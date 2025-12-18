@@ -14,6 +14,7 @@ A tutors booking platform where students find and book lessons with verified tut
 **Problems it solves:**
 - Tutor discovery with filters (subject, rate, verification status)
 - Lesson booking and scheduling
+- Real-time chat between tutors and students
 - Admin dashboard for content management
 
 **Skills demonstrated:**
@@ -36,10 +37,11 @@ A tutors booking platform where students find and book lessons with verified tut
 
 | Layer | Stack |
 |-------|-------|
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
-| Backend | Django 5.2 LTS, DRF, drf-spectacular |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4, Zustand |
+| Backend | Django 5.2 LTS, DRF, Django Channels, drf-spectacular |
 | Database | PostgreSQL 17, Redis 7.4 |
-| Infra | Docker Compose, MinIO |
+| Real-time | WebSockets (Django Channels), Redis Channel Layer |
+| Infra | Docker Compose, MinIO, Daphne ASGI |
 | Quality | Biome, Ruff, Husky, Vitest, pytest |
 
 ## Quick Start

@@ -919,6 +919,219 @@
                 }
             }
         },
+        "/api/chat/rooms/": {
+            "get": {
+                "operationId": "chat_rooms_list",
+                "description": "Returns all chat rooms where the current user is either tutor or student.",
+                "summary": "List user's chat rooms",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedChatRoomList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "chat_rooms_create",
+                "description": "Creates a new chat room with a tutor or returns existing one.",
+                "summary": "Create or get chat room",
+                "tags": [
+                    "chat"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChatRoomRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChatRoomRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChatRoomRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatRoom"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/chat/rooms/{id}/": {
+            "get": {
+                "operationId": "chat_rooms_retrieve",
+                "description": "Returns details of a specific chat room if the user has access.",
+                "summary": "Get chat room details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatRoom"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/chat/rooms/{id}/mark_read/": {
+            "post": {
+                "operationId": "chat_rooms_mark_read_create",
+                "description": "Marks all unread messages in the chat room as read for the current user.",
+                "summary": "Mark messages as read",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatRoomRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatRoomRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatRoomRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatRoom"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/chat/rooms/{id}/messages/": {
+            "get": {
+                "operationId": "chat_rooms_messages_retrieve",
+                "description": "Returns paginated message history for the specified chat room.",
+                "summary": "Get messages for a chat room",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatRoom"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/tutor-drafts/": {
             "get": {
                 "operationId": "tutor_drafts_list",
@@ -1579,6 +1792,74 @@
                     "tutor"
                 ]
             },
+            "ChatRoom": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "tutor": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/User"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "student": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/User"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "booking": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "last_message": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true,
+                        "readOnly": true
+                    },
+                    "unread_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "id",
+                    "last_message",
+                    "student",
+                    "tutor",
+                    "unread_count",
+                    "updated_at"
+                ]
+            },
+            "ChatRoomRequest": {
+                "type": "object",
+                "properties": {
+                    "booking": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                }
+            },
             "CreateBooking": {
                 "type": "object",
                 "description": "Serializer for creating new bookings.\n\nAutomatically sets the student and calculates price based on tutor's hourly rate.",
@@ -1635,6 +1916,17 @@
                 "required": [
                     "scheduled_at",
                     "tutor"
+                ]
+            },
+            "CreateChatRoomRequest": {
+                "type": "object",
+                "properties": {
+                    "tutor_id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "tutor_id"
                 ]
             },
             "CredentialsLoginRequest": {
@@ -1760,6 +2052,37 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Booking"
+                        }
+                    }
+                }
+            },
+            "PaginatedChatRoomList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatRoom"
                         }
                     }
                 }
@@ -1909,6 +2232,10 @@
                         "type": "integer",
                         "readOnly": true
                     },
+                    "user_id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
                     "slug": {
                         "type": "string",
                         "readOnly": true,
@@ -1992,7 +2319,8 @@
                     "hourly_rate",
                     "id",
                     "slug",
-                    "subjects"
+                    "subjects",
+                    "user_id"
                 ]
             },
             "TutorDetail": {
@@ -2000,6 +2328,10 @@
                 "description": "Detailed serializer for Tutor model.\n\nIncludes additional fields for the detail view.",
                 "properties": {
                     "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "user_id": {
                         "type": "integer",
                         "readOnly": true
                     },
@@ -2099,7 +2431,8 @@
                     "id",
                     "slug",
                     "subjects",
-                    "updated_at"
+                    "updated_at",
+                    "user_id"
                 ]
             },
             "TutorDraft": {
@@ -2201,6 +2534,34 @@
                     "is_staff",
                     "last_name",
                     "user_type"
+                ]
+            },
+            "UserRequest": {
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
+                        "pattern": "^[\\w.@+-]+$",
+                        "maxLength": 150
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "maxLength": 150
+                    },
+                    "avatar": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "username"
                 ]
             },
             "UserTypeEnum": {

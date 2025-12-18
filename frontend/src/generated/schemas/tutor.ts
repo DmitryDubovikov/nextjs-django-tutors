@@ -13,6 +13,7 @@ Used for list and retrieve operations.
  */
 export interface Tutor {
   readonly id: number;
+  readonly user_id: number;
   /**
    * URL-friendly identifier for the tutor
    * @pattern ^[-a-zA-Z0-9_]+$

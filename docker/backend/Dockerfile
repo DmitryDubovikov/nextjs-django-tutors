@@ -34,5 +34,5 @@ EXPOSE 8000
 # Activate venv in PATH for all commands
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Start development server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Start ASGI server (Daphne for WebSocket support)
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
