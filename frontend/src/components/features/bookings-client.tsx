@@ -1,17 +1,27 @@
 'use client';
 
+import { useState } from 'react';
+
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBookingsCancelCreate, useBookingsList } from '@/generated/api/bookings/bookings';
 import type { Booking, BookingRequest } from '@/generated/schemas';
 import { cn } from '@/lib/utils';
 
 import { toast } from '../ui/toast';
+import { PaymentForm } from './checkout';
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -118,10 +128,12 @@ function BookingCard({
   booking,
   onCancel,
   isCancelling,
+  onPay,
 }: {
   booking: Booking;
   onCancel: (id: number) => void;
   isCancelling: boolean;
+  onPay: (booking: Booking) => void;
 }) {
   const { date, time } = formatDateTime(booking.scheduled_at);
 
@@ -147,16 +159,23 @@ function BookingCard({
         {booking.notes && <p className="text-muted-foreground text-sm">{booking.notes}</p>}
         <div className="flex items-center justify-between">
           <span className="font-semibold">{formatPrice(booking.price)}</span>
-          {(booking.status === 'pending' || booking.status === 'confirmed') && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onCancel(booking.id)}
-              disabled={isCancelling}
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel'}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {booking.status === 'pending' && (
+              <Button size="sm" onClick={() => onPay(booking)}>
+                Pay Now
+              </Button>
+            )}
+            {(booking.status === 'pending' || booking.status === 'confirmed') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onCancel(booking.id)}
+                disabled={isCancelling}
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel'}
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -166,6 +185,7 @@ function BookingCard({
 export function BookingsClient() {
   const { status } = useSession();
   const isSessionReady = status === 'authenticated';
+  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
 
   const { data, isLoading, error, refetch } = useBookingsList(undefined, {
     query: {
@@ -228,16 +248,50 @@ export function BookingsClient() {
     return <EmptyState />;
   }
 
+  const handlePaymentSuccess = () => {
+    setPayingBooking(null);
+    refetch();
+  };
+
+  const handlePaymentError = () => {
+    // Keep dialog open so user can retry
+  };
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {bookings.map((booking) => (
-        <BookingCard
-          key={booking.id}
-          booking={booking}
-          onCancel={handleCancel}
-          isCancelling={isCancelling}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        {bookings.map((booking) => (
+          <BookingCard
+            key={booking.id}
+            booking={booking}
+            onCancel={handleCancel}
+            isCancelling={isCancelling}
+            onPay={setPayingBooking}
+          />
+        ))}
+      </div>
+
+      <Dialog
+        open={payingBooking !== null}
+        onOpenChange={(open) => !open && setPayingBooking(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogDescription>
+              Pay for your lesson with {payingBooking?.tutor_name}
+            </DialogDescription>
+          </DialogHeader>
+          {payingBooking && (
+            <PaymentForm
+              bookingId={payingBooking.id}
+              amount={Number(payingBooking.price)}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

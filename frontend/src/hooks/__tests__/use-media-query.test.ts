@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useMediaQuery } from '../use-media-query';
@@ -129,9 +129,11 @@ describe('useMediaQuery', () => {
 
       // Simulate media query change
       currentMatches = true;
-      for (const listener of listeners) {
-        listener({ matches: true } as MediaQueryListEvent);
-      }
+      act(() => {
+        for (const listener of listeners) {
+          listener({ matches: true } as MediaQueryListEvent);
+        }
+      });
 
       await waitFor(() => {
         expect(result.current).toBe(true);

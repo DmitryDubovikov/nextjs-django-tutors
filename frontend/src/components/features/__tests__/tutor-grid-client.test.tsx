@@ -36,6 +36,14 @@ vi.mock('@/generated/api/bookings/bookings', () => ({
   useBookingsCreate: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }));
 
+vi.mock('@/generated/api/tutors/tutors', () => ({
+  tutorsList: vi.fn(() =>
+    Promise.resolve({
+      data: { results: [], count: 0, next: null, previous: null },
+    })
+  ),
+}));
+
 vi.mock('@/components/ui/toast', () => ({
   toast: vi.fn(),
 }));

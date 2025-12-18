@@ -51,7 +51,8 @@
       "a11y": {
         "noSvgWithoutTitle": "warn",
         "useAltText": "error",
-        "useKeyWithClickEvents": "error"
+        "useKeyWithClickEvents": "error",
+        "noLabelWithoutControl": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "warn"

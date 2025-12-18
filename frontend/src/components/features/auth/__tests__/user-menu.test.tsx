@@ -1,9 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { signOut, useSession } from 'next-auth/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { UserMenu } from '../user-menu';
+
+// Suppress JSDOM navigation errors (JSDOM doesn't implement navigation)
+let consoleError: ReturnType<typeof vi.spyOn>;
+
+beforeAll(() => {
+  consoleError = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('Not implemented: navigation')) {
+      return;
+    }
+    console.warn(...args);
+  });
+});
+
+afterAll(() => {
+  consoleError.mockRestore();
+});
 
 // Mock next-auth/react
 vi.mock('next-auth/react', () => ({
