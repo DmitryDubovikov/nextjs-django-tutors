@@ -16,6 +16,7 @@ class TutorSerializer(serializers.ModelSerializer):
     Used for list and retrieve operations.
     """
 
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
     full_name = serializers.SerializerMethodField()
     avatar_url = serializers.SerializerMethodField()
     subjects = serializers.ListField(
@@ -31,6 +32,7 @@ class TutorSerializer(serializers.ModelSerializer):
         model = Tutor
         fields = [
             "id",
+            "user_id",
             "slug",
             "full_name",
             "avatar_url",
@@ -45,7 +47,7 @@ class TutorSerializer(serializers.ModelSerializer):
             "formats",
             "created_at",
         ]
-        read_only_fields = ["id", "slug", "created_at"]
+        read_only_fields = ["id", "user_id", "slug", "created_at"]
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_full_name(self, obj: Tutor) -> str:

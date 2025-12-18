@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { SendMessageButton } from '@/components/features/tutors/send-message-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -247,9 +248,7 @@ export default async function TutorDetailPage({ params }: TutorDetailPageProps) 
               <p className="text-muted-foreground text-sm">
                 Have questions? Send a message to {tutor.full_name}.
               </p>
-              <Button variant="outline" className="w-full">
-                Send Message
-              </Button>
+              <SendMessageButton tutorUserId={tutor.user_id} />
             </CardContent>
           </Card>
         </div>
