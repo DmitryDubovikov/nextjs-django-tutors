@@ -1132,6 +1132,194 @@
                 }
             }
         },
+        "/api/payments/confirm/": {
+            "post": {
+                "operationId": "payments_confirm_create",
+                "description": "Confirm a PaymentIntent. Triggers async payment processing.",
+                "summary": "Confirm payment",
+                "tags": [
+                    "payments"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConfirmPaymentResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/payments/create-intent/": {
+            "post": {
+                "operationId": "payments_create_intent_create",
+                "description": "Create a new PaymentIntent for a booking. Idempotent via idempotency_key.",
+                "summary": "Create payment intent",
+                "tags": [
+                    "payments"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePaymentIntentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePaymentIntentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePaymentIntentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentIntentResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentIntentResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/payments/status/{payment_intent_id}/": {
+            "get": {
+                "operationId": "payments_status_retrieve",
+                "description": "Get current status of a payment by payment_intent_id.",
+                "summary": "Get payment status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "payment_intent_id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConfirmPaymentResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/payments/webhook-simulator/": {
+            "post": {
+                "operationId": "payments_webhook_simulator_create",
+                "description": "Admin endpoint to simulate payment webhook events.",
+                "summary": "Simulate webhook",
+                "tags": [
+                    "payments"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookEventRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookEventRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/tutor-drafts/": {
             "get": {
                 "operationId": "tutor_drafts_list",
@@ -1860,6 +2048,43 @@
                     }
                 }
             },
+            "ConfirmPaymentRequest": {
+                "type": "object",
+                "description": "Serializer for confirming a payment.",
+                "properties": {
+                    "payment_intent_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "PaymentIntent ID to confirm"
+                    },
+                    "card_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Test card number (use 4242424242424242 for success)",
+                        "maxLength": 19
+                    }
+                },
+                "required": [
+                    "payment_intent_id"
+                ]
+            },
+            "ConfirmPaymentResponse": {
+                "type": "object",
+                "description": "Serializer for payment confirmation response.",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Current payment status"
+                    },
+                    "payment_intent_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "payment_intent_id",
+                    "status"
+                ]
+            },
             "CreateBooking": {
                 "type": "object",
                 "description": "Serializer for creating new bookings.\n\nAutomatically sets the student and calculates price based on tutor's hourly rate.",
@@ -1929,6 +2154,43 @@
                     "tutor_id"
                 ]
             },
+            "CreatePaymentIntentRequest": {
+                "type": "object",
+                "description": "Serializer for creating a new PaymentIntent.",
+                "properties": {
+                    "booking_id": {
+                        "type": "integer",
+                        "description": "ID of the booking to pay for"
+                    },
+                    "amount": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+                        "description": "Payment amount (minimum 0.01)"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "minLength": 1,
+                        "default": "RUB",
+                        "description": "Currency code (ISO 4217)",
+                        "maxLength": 3
+                    },
+                    "idempotency_key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Client-provided idempotency key for safe retries",
+                        "maxLength": 64
+                    },
+                    "metadata": {
+                        "description": "Optional metadata"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "booking_id",
+                    "idempotency_key"
+                ]
+            },
             "CredentialsLoginRequest": {
                 "type": "object",
                 "description": "Serializer for email/password login request.",
@@ -1982,6 +2244,14 @@
                     "email",
                     "password"
                 ]
+            },
+            "EventTypeEnum": {
+                "enum": [
+                    "payment_intent.succeeded",
+                    "payment_intent.failed"
+                ],
+                "type": "string",
+                "description": "* `payment_intent.succeeded` - Payment Succeeded\n* `payment_intent.failed` - Payment Failed"
             },
             "GitHubAuthRequest": {
                 "type": "object",
@@ -2163,6 +2433,43 @@
                         "description": "Current wizard step (0-4)"
                     }
                 }
+            },
+            "PaymentIntentResponse": {
+                "type": "object",
+                "description": "Serializer for PaymentIntent creation response.",
+                "properties": {
+                    "payment_intent_id": {
+                        "type": "string",
+                        "description": "Mock PaymentIntent ID"
+                    },
+                    "client_secret": {
+                        "type": "string",
+                        "description": "Client secret for frontend"
+                    },
+                    "amount": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "created": {
+                        "type": "boolean",
+                        "description": "True if newly created, False if existing"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "client_secret",
+                    "created",
+                    "currency",
+                    "payment_intent_id",
+                    "status"
+                ]
             },
             "StatusEnum": {
                 "enum": [
@@ -2571,6 +2878,45 @@
                 ],
                 "type": "string",
                 "description": "* `student` - Student\n* `tutor` - Tutor"
+            },
+            "WebhookEventRequest": {
+                "type": "object",
+                "description": "Serializer for webhook events (admin-only).",
+                "properties": {
+                    "event_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EventTypeEnum"
+                            }
+                        ],
+                        "description": "Webhook event type\n\n* `payment_intent.succeeded` - Payment Succeeded\n* `payment_intent.failed` - Payment Failed"
+                    },
+                    "payment_intent_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "PaymentIntent ID"
+                    }
+                },
+                "required": [
+                    "event_type",
+                    "payment_intent_id"
+                ]
+            },
+            "WebhookResponse": {
+                "type": "object",
+                "description": "Serializer for webhook response.",
+                "properties": {
+                    "processed": {
+                        "type": "boolean"
+                    },
+                    "payment_status": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "payment_status",
+                    "processed"
+                ]
             }
         },
         "securitySchemes": {

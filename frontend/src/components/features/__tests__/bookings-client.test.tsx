@@ -27,6 +27,15 @@ vi.mock('next/link', () => ({
   default: ({ children, href }: any) => <a href={href}>{children}</a>,
 }));
 
+// Mock PaymentForm to avoid complex payment API mocking
+vi.mock('../checkout', () => ({
+  PaymentForm: ({ bookingId, amount }: { bookingId: number; amount: number }) => (
+    <div data-testid="payment-form" data-booking-id={bookingId} data-amount={amount}>
+      Mock Payment Form
+    </div>
+  ),
+}));
+
 import { toast } from '@/components/ui/toast';
 import { useBookingsCancelCreate, useBookingsList } from '@/generated/api/bookings/bookings';
 
@@ -531,6 +540,124 @@ describe('BookingsClient', () => {
       for (const button of cancelButtons) {
         expect(button).toBeInTheDocument();
       }
+    });
+  });
+
+  describe('payment functionality', () => {
+    beforeEach(() => {
+      vi.mocked(useBookingsCancelCreate).mockReturnValue({
+        mutate: vi.fn(),
+        isPending: false,
+      } as any);
+    });
+
+    it('shows Pay Now button for pending bookings', () => {
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[0]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      expect(screen.getByRole('button', { name: /pay now/i })).toBeInTheDocument();
+    });
+
+    it('does not show Pay Now button for confirmed bookings', () => {
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[1]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      expect(screen.queryByRole('button', { name: /pay now/i })).not.toBeInTheDocument();
+    });
+
+    it('does not show Pay Now button for completed bookings', () => {
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[2]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      expect(screen.queryByRole('button', { name: /pay now/i })).not.toBeInTheDocument();
+    });
+
+    it('does not show Pay Now button for cancelled bookings', () => {
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[3]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      expect(screen.queryByRole('button', { name: /pay now/i })).not.toBeInTheDocument();
+    });
+
+    it('opens payment dialog when Pay Now clicked', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[0]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      const payButton = screen.getByRole('button', { name: /pay now/i });
+      await user.click(payButton);
+
+      expect(screen.getByText('Complete Payment')).toBeInTheDocument();
+      expect(screen.getByTestId('payment-form')).toBeInTheDocument();
+    });
+
+    it('passes correct booking id and amount to PaymentForm', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[0]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      const payButton = screen.getByRole('button', { name: /pay now/i });
+      await user.click(payButton);
+
+      const paymentForm = screen.getByTestId('payment-form');
+      expect(paymentForm).toHaveAttribute('data-booking-id', '1');
+      expect(paymentForm).toHaveAttribute('data-amount', '50');
+    });
+
+    it('shows tutor name in payment dialog', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(useBookingsList).mockReturnValue({
+        data: { data: { results: [mockBookings[0]] } },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
+
+      renderWithClient(<BookingsClient />);
+
+      const payButton = screen.getByRole('button', { name: /pay now/i });
+      await user.click(payButton);
+
+      expect(screen.getByText(/pay for your lesson with john doe/i)).toBeInTheDocument();
     });
   });
 });

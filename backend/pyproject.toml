@@ -137,6 +137,9 @@ ignore = [
 "**/serializers.py" = [
     "PLC0415",  # Import inside method to avoid circular imports
 ]
+"**/tasks.py" = [
+    "PLC0415",  # Celery tasks use deferred imports to avoid circular dependencies
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config"]
