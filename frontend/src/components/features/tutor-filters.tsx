@@ -43,7 +43,7 @@ export function TutorFilters({ subjects }: TutorFiltersProps) {
       ordering: parseAsStringLiteral(SORT_OPTIONS).withDefault('-rating'),
       page: parseAsInteger.withDefault(1),
     },
-    { shallow: false }
+    { shallow: true }
   );
 
   // Sync local search with URL param
