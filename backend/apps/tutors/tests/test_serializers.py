@@ -177,7 +177,7 @@ class TestTutorSearchSerializer:
         assert data["avatar_url"] == "https://example.com/avatar.jpg"
         assert data["headline"] == "Expert Math Tutor"
         assert data["bio"] == "I teach mathematics."
-        assert data["hourly_rate"] == "50.00"
+        assert data["hourly_rate"] == 50.0
         assert data["subjects"] == ["math", "physics"]
         assert data["is_verified"] is True
         assert data["location"] == "New York"

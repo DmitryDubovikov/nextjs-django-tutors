@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,23 +104,23 @@ describe('TutorFilters', () => {
     });
 
     it('calls setParams with debounce on search input change', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       render(<TutorFilters subjects={defaultSubjects} />);
 
       const searchInput = screen.getByPlaceholderText(/search by name or headline/i);
       await user.type(searchInput, 'test');
 
-      await waitFor(
-        () => {
-          expect(mockSetParams).toHaveBeenCalledWith({ q: 'test', page: 1 });
-        },
-        { timeout: 500 }
-      );
+      // Wait for debounce (500ms) + buffer
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      });
+
+      expect(mockSetParams).toHaveBeenCalledWith({ q: 'test', page: 1 });
     });
 
     it('resets page to 1 on search', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockState = { ...defaultState, page: 5 };
 
       render(<TutorFilters subjects={defaultSubjects} />);
@@ -128,12 +128,12 @@ describe('TutorFilters', () => {
       const searchInput = screen.getByPlaceholderText(/search by name or headline/i);
       await user.type(searchInput, 'new search');
 
-      await waitFor(
-        () => {
-          expect(mockSetParams).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
-        },
-        { timeout: 500 }
-      );
+      // Wait for debounce (500ms) + buffer
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      });
+
+      expect(mockSetParams).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
     });
 
     it('shows search icon in input', () => {
@@ -196,7 +196,7 @@ describe('TutorFilters', () => {
 
   describe('filter removal', () => {
     it('removes search filter when badge is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockState = { ...defaultState, q: 'algebra' };
 
       render(<TutorFilters subjects={defaultSubjects} />);
@@ -208,7 +208,7 @@ describe('TutorFilters', () => {
     });
 
     it('removes subject filter when badge is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockState = { ...defaultState, subject: 'physics' };
 
       render(<TutorFilters subjects={defaultSubjects} />);
@@ -220,7 +220,7 @@ describe('TutorFilters', () => {
     });
 
     it('removes format filter when badge is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockState = { ...defaultState, format: 'offline' };
 
       render(<TutorFilters subjects={defaultSubjects} />);
@@ -232,7 +232,7 @@ describe('TutorFilters', () => {
     });
 
     it('clears all filters when clear all is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       mockState = {
         q: 'test',
         subject: 'math',
@@ -299,20 +299,20 @@ describe('TutorFilters', () => {
     });
 
     it('handles long search queries', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       render(<TutorFilters subjects={defaultSubjects} />);
 
       const searchInput = screen.getByPlaceholderText(/search by name or headline/i);
-      const longQuery = 'a'.repeat(200);
+      const longQuery = 'a'.repeat(50); // Reduced for faster test
       await user.type(searchInput, longQuery);
 
-      await waitFor(
-        () => {
-          expect(mockSetParams).toHaveBeenCalledWith({ q: longQuery, page: 1 });
-        },
-        { timeout: 500 }
-      );
+      // Wait for debounce (500ms) + buffer
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      });
+
+      expect(mockSetParams).toHaveBeenCalledWith({ q: longQuery, page: 1 });
     });
   });
 

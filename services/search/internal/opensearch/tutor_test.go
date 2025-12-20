@@ -38,12 +38,31 @@ func TestBuildSearchQuery_TextSearch(t *testing.T) {
 		t.Errorf("expected 1 must clause, got %d", len(must))
 	}
 
-	multiMatch := must[0]["multi_match"].(map[string]any)
-	if multiMatch["query"] != "математика" {
-		t.Errorf("expected query 'математика', got %v", multiMatch["query"])
+	// The text search now uses a nested bool with should clauses
+	// for both fuzzy and phrase_prefix matching
+	innerBool := must[0]["bool"].(map[string]any)
+	should := innerBool["should"].([]map[string]any)
+
+	if len(should) != 2 {
+		t.Errorf("expected 2 should clauses, got %d", len(should))
 	}
-	if multiMatch["fuzziness"] != "AUTO" {
-		t.Errorf("expected fuzziness AUTO, got %v", multiMatch["fuzziness"])
+
+	// First should clause: fuzzy multi_match
+	fuzzyMatch := should[0]["multi_match"].(map[string]any)
+	if fuzzyMatch["query"] != "математика" {
+		t.Errorf("expected query 'математика', got %v", fuzzyMatch["query"])
+	}
+	if fuzzyMatch["fuzziness"] != "AUTO" {
+		t.Errorf("expected fuzziness AUTO, got %v", fuzzyMatch["fuzziness"])
+	}
+
+	// Second should clause: phrase_prefix multi_match
+	prefixMatch := should[1]["multi_match"].(map[string]any)
+	if prefixMatch["query"] != "математика" {
+		t.Errorf("expected query 'математика', got %v", prefixMatch["query"])
+	}
+	if prefixMatch["type"] != "phrase_prefix" {
+		t.Errorf("expected type 'phrase_prefix', got %v", prefixMatch["type"])
 	}
 }
 
