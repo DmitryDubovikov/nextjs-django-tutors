@@ -107,6 +107,46 @@ class TutorDraftSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TutorSearchSerializer(serializers.ModelSerializer):
+    """Serializer for search indexing - matches Go Tutor struct."""
+
+    full_name = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+    # Go expects float64, not strings - use FloatField to avoid DecimalField's string output
+    hourly_rate = serializers.FloatField()
+    rating = serializers.FloatField()
+
+    class Meta:
+        model = Tutor
+        fields = [
+            "id",
+            "slug",
+            "full_name",
+            "avatar_url",
+            "headline",
+            "bio",
+            "subjects",
+            "hourly_rate",
+            "rating",
+            "reviews_count",
+            "is_verified",
+            "location",
+            "formats",
+            "created_at",
+            "updated_at",
+        ]
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_full_name(self, obj: Tutor) -> str:
+        """Return the tutor's full name."""
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_avatar_url(self, obj: Tutor) -> str:
+        """Return the tutor's avatar URL."""
+        return obj.avatar_url
+
+
 class TutorPublishSerializer(serializers.Serializer):
     """
     Serializer for publishing a tutor draft to create an actual Tutor profile.

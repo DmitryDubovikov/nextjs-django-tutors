@@ -1,4 +1,4 @@
-.PHONY: help up down logs lint lint-frontend lint-backend test test-frontend test-backend check generate-schema generate-api migrate shell-frontend shell-backend format format-frontend format-backend
+.PHONY: help up down logs lint lint-frontend lint-backend lint-go test test-frontend test-backend test-go check generate-schema generate-api migrate shell-frontend shell-backend format format-frontend format-backend format-go format-go-check search-build search-logs search-shell
 
 # Default target
 help:
@@ -38,6 +38,14 @@ help:
 	@echo "  Shell access:"
 	@echo "    make shell-frontend  - Open shell in frontend container"
 	@echo "    make shell-backend   - Open shell in backend container"
+	@echo ""
+	@echo "  Go Search Service:"
+	@echo "    make lint-go         - Run Go linter (go vet)"
+	@echo "    make test-go         - Run Go tests"
+	@echo "    make format-go       - Format Go code (gofmt)"
+	@echo "    make search-build    - Rebuild search service"
+	@echo "    make search-logs     - View search service logs"
+	@echo "    make search-shell    - Open shell in search service"
 
 # =============================================================================
 # Docker commands
@@ -59,7 +67,7 @@ build:
 # Formatting
 # =============================================================================
 
-format: format-frontend format-backend
+format: format-frontend format-backend format-go
 	@echo "✅ All code formatted!"
 
 format-frontend:
@@ -74,7 +82,7 @@ format-backend:
 # Linting
 # =============================================================================
 
-lint: lint-frontend lint-backend
+lint: lint-frontend lint-backend lint-go
 	@echo "✅ All linters passed!"
 
 lint-frontend:
@@ -95,7 +103,7 @@ lint-backend:
 # Testing
 # =============================================================================
 
-test: test-frontend test-backend
+test: test-frontend test-backend test-go
 	@echo "✅ All tests passed!"
 
 test-frontend:
@@ -127,6 +135,10 @@ check: lint test
 	@echo "    ✓ Ruff lint"
 	@echo "    ✓ Ruff format"
 	@echo "    ✓ pytest tests"
+	@echo ""
+	@echo "  Go Search Service:"
+	@echo "    ✓ go vet"
+	@echo "    ✓ go test"
 	@echo ""
 
 # =============================================================================
@@ -160,3 +172,34 @@ shell-frontend:
 
 shell-backend:
 	docker compose exec backend bash
+
+# =============================================================================
+# Go Search Service
+# =============================================================================
+
+GO_RUN = docker run --rm -w /app -v $(PWD)/services/search:/app golang:1.23-alpine
+
+lint-go:
+	@echo "🔍 Running Go linter (go vet)..."
+	$(GO_RUN) go vet ./...
+
+test-go:
+	@echo "🧪 Running Go tests..."
+	$(GO_RUN) go test -v ./...
+
+format-go:
+	@echo "🎨 Formatting Go code..."
+	$(GO_RUN) gofmt -w .
+
+format-go-check:
+	@echo "🔍 Checking Go formatting..."
+	$(GO_RUN) sh -c 'test -z "$$(gofmt -l .)" || (echo "Go files not formatted:" && gofmt -l . && exit 1)'
+
+search-build:
+	docker compose build search-service
+
+search-logs:
+	docker compose logs -f search-service
+
+search-shell:
+	docker compose exec search-service sh

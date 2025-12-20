@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from apps.core.tests.factories import TutorUserFactory
-from apps.tutors.serializers import TutorDetailSerializer, TutorSerializer
+from apps.tutors.serializers import TutorDetailSerializer, TutorSearchSerializer, TutorSerializer
 
 from .factories import TutorFactory, VerifiedTutorFactory
 
@@ -144,3 +144,134 @@ class TestTutorDetailSerializer:
 
         assert "updated_at" in data
         assert data["updated_at"] is not None
+
+
+@pytest.mark.django_db
+class TestTutorSearchSerializer:
+    """Tests for TutorSearchSerializer used for Go search service indexing."""
+
+    def test_serialize_tutor_for_search(self):
+        """TutorSearchSerializer correctly serializes tutor for search indexing."""
+        user = TutorUserFactory(
+            first_name="John",
+            last_name="Doe",
+            avatar="https://example.com/avatar.jpg",
+        )
+        tutor = TutorFactory(
+            user=user,
+            headline="Expert Math Tutor",
+            bio="I teach mathematics.",
+            hourly_rate=Decimal("50.00"),
+            subjects=["math", "physics"],
+            is_verified=True,
+            location="New York",
+            formats=["online", "offline"],
+        )
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert data["id"] == tutor.id
+        assert data["slug"] == tutor.slug
+        assert data["full_name"] == "John Doe"
+        assert data["avatar_url"] == "https://example.com/avatar.jpg"
+        assert data["headline"] == "Expert Math Tutor"
+        assert data["bio"] == "I teach mathematics."
+        assert data["hourly_rate"] == 50.0
+        assert data["subjects"] == ["math", "physics"]
+        assert data["is_verified"] is True
+        assert data["location"] == "New York"
+        assert data["formats"] == ["online", "offline"]
+        assert "created_at" in data
+        assert "updated_at" in data
+
+    def test_search_serializer_includes_slug(self):
+        """TutorSearchSerializer includes slug field for frontend links."""
+        tutor = TutorFactory()
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert "slug" in data
+        assert data["slug"] == tutor.slug
+
+    def test_search_serializer_includes_avatar_url(self):
+        """TutorSearchSerializer includes avatar_url for displaying avatars."""
+        user = TutorUserFactory(avatar="https://example.com/photo.jpg")
+        tutor = TutorFactory(user=user)
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert "avatar_url" in data
+        assert data["avatar_url"] == "https://example.com/photo.jpg"
+
+    def test_search_serializer_handles_empty_avatar(self):
+        """TutorSearchSerializer handles empty avatar correctly."""
+        user = TutorUserFactory(avatar="")
+        tutor = TutorFactory(user=user)
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert data["avatar_url"] == ""
+
+    def test_search_serializer_full_name_computation(self):
+        """TutorSearchSerializer correctly computes full_name from user."""
+        user = TutorUserFactory(first_name="Jane", last_name="Smith")
+        tutor = TutorFactory(user=user)
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert data["full_name"] == "Jane Smith"
+
+    def test_search_serializer_full_name_strips_whitespace(self):
+        """TutorSearchSerializer strips whitespace from full_name."""
+        user = TutorUserFactory(first_name="John", last_name="")
+        tutor = TutorFactory(user=user)
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        assert data["full_name"] == "John"
+
+    def test_search_serializer_has_all_required_fields(self):
+        """TutorSearchSerializer includes all fields required by Go service."""
+        tutor = TutorFactory()
+
+        serializer = TutorSearchSerializer(tutor)
+        data = serializer.data
+
+        required_fields = [
+            "id",
+            "slug",
+            "full_name",
+            "avatar_url",
+            "headline",
+            "bio",
+            "subjects",
+            "hourly_rate",
+            "rating",
+            "reviews_count",
+            "is_verified",
+            "location",
+            "formats",
+            "created_at",
+            "updated_at",
+        ]
+
+        for field in required_fields:
+            assert field in data, f"Missing required field: {field}"
+
+    def test_serialize_multiple_tutors_for_batch_sync(self):
+        """TutorSearchSerializer can serialize multiple tutors for batch sync."""
+        tutors = TutorFactory.create_batch(3)
+
+        serializer = TutorSearchSerializer(tutors, many=True)
+        data = serializer.data
+
+        assert len(data) == 3
+        for item in data:
+            assert "slug" in item
+            assert "avatar_url" in item
