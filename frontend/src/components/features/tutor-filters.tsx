@@ -51,15 +51,19 @@ export function TutorFilters({ subjects }: TutorFiltersProps) {
     setLocalSearch(params.q);
   }, [params.q]);
 
-  // Debounced search update
+  // Debounced search update with minimum 2 characters
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localSearch !== params.q) {
-        startTransition(() => {
-          setParams({ q: localSearch || null, page: 1 });
-        });
+        // Only search if empty (to clear) or at least 2 characters
+        const shouldSearch = localSearch.length === 0 || localSearch.length >= 2;
+        if (shouldSearch) {
+          startTransition(() => {
+            setParams({ q: localSearch || null, page: 1 });
+          });
+        }
       }
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [localSearch, params.q, setParams]);

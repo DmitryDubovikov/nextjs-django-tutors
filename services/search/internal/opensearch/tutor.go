@@ -105,11 +105,28 @@ func buildSearchQuery(query SearchQuery) map[string]any {
 	filter := []map[string]any{}
 
 	if query.Text != "" {
+		// Use bool query with should to support both:
+		// - phrase_prefix: partial word matching ("mar" -> "Marie")
+		// - fuzziness: typo tolerance ("marei" -> "Marie")
 		must = append(must, map[string]any{
-			"multi_match": map[string]any{
-				"query":     query.Text,
-				"fields":    []string{"full_name", "headline^2", "bio"},
-				"fuzziness": "AUTO",
+			"bool": map[string]any{
+				"should": []map[string]any{
+					{
+						"multi_match": map[string]any{
+							"query":     query.Text,
+							"fields":    []string{"full_name", "headline^2", "bio"},
+							"fuzziness": "AUTO",
+						},
+					},
+					{
+						"multi_match": map[string]any{
+							"query":  query.Text,
+							"fields": []string{"full_name", "headline^2", "bio"},
+							"type":   "phrase_prefix",
+						},
+					},
+				},
+				"minimum_should_match": 1,
 			},
 		})
 	}

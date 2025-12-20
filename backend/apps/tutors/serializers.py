@@ -112,6 +112,9 @@ class TutorSearchSerializer(serializers.ModelSerializer):
 
     full_name = serializers.SerializerMethodField()
     avatar_url = serializers.SerializerMethodField()
+    # Go expects float64, not strings - use FloatField to avoid DecimalField's string output
+    hourly_rate = serializers.FloatField()
+    rating = serializers.FloatField()
 
     class Meta:
         model = Tutor
