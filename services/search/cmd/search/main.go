@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"search/internal/api"
+	"search/internal/handler"
 	"search/internal/kafka"
 	"search/internal/opensearch"
 )
@@ -56,11 +57,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	eventHandler := handler.New(osClient, logger)
+
 	consumer := kafka.NewConsumer(kafka.Config{
 		Brokers: strings.Split(kafkaBrokers, ","),
 		Topic:   kafkaTopic,
 		GroupID: kafkaGroupID,
-	}, logger)
+	}, eventHandler, logger)
 
 	go func() {
 		if err := consumer.Start(ctx); err != nil {

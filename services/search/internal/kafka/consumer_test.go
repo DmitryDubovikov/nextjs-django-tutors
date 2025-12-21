@@ -3,8 +3,10 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -47,6 +49,29 @@ func (m *mockKafkaReader) Config() kafka.ReaderConfig {
 	return m.configReturn
 }
 
+// mockEventHandler is a mock implementation of EventHandler for testing.
+type mockEventHandler struct {
+	mu            sync.Mutex
+	handledEvents []Event
+	handleError   error
+}
+
+func (m *mockEventHandler) Handle(_ context.Context, event Event) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.handleError != nil {
+		return m.handleError
+	}
+	m.handledEvents = append(m.handledEvents, event)
+	return nil
+}
+
+func (m *mockEventHandler) getHandledEvents() []Event {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]Event{}, m.handledEvents...)
+}
+
 func TestNewConsumer(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -73,10 +98,12 @@ func TestNewConsumer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-			consumer := NewConsumer(tt.config, logger)
+			handler := &mockEventHandler{}
+			consumer := NewConsumer(tt.config, handler, logger)
 
 			require.NotNil(t, consumer)
 			require.NotNil(t, consumer.reader)
+			require.NotNil(t, consumer.handler)
 			require.NotNil(t, consumer.logger)
 
 			readerCfg := consumer.reader.Config()
@@ -113,12 +140,14 @@ func TestConsumer_Start_ProcessesMessages(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []kafka.Message
+		expected int
 	}{
 		{
 			name: "process single message",
 			messages: []kafka.Message{
 				{Key: []byte("1"), Value: event1Bytes, Offset: 0},
 			},
+			expected: 1,
 		},
 		{
 			name: "process multiple messages",
@@ -126,6 +155,7 @@ func TestConsumer_Start_ProcessesMessages(t *testing.T) {
 				{Key: []byte("1"), Value: event1Bytes, Offset: 0},
 				{Key: []byte("2"), Value: event2Bytes, Offset: 1},
 			},
+			expected: 2,
 		},
 	}
 
@@ -139,10 +169,8 @@ func TestConsumer_Start_ProcessesMessages(t *testing.T) {
 					GroupID: "test-group",
 				},
 			}
-			consumer := &Consumer{
-				reader: mockReader,
-				logger: logger,
-			}
+			handler := &mockEventHandler{}
+			consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
@@ -150,6 +178,7 @@ func TestConsumer_Start_ProcessesMessages(t *testing.T) {
 			err := consumer.Start(ctx)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.messages), mockReader.readIndex)
+			assert.Equal(t, tt.expected, len(handler.getHandledEvents()))
 		})
 	}
 }
@@ -165,10 +194,8 @@ func TestConsumer_Start_HandlesInvalidJSON(t *testing.T) {
 			GroupID: "test-group",
 		},
 	}
-	consumer := &Consumer{
-		reader: mockReader,
-		logger: logger,
-	}
+	handler := &mockEventHandler{}
+	consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -176,6 +203,7 @@ func TestConsumer_Start_HandlesInvalidJSON(t *testing.T) {
 	err := consumer.Start(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, mockReader.readIndex)
+	assert.Equal(t, 0, len(handler.getHandledEvents()))
 }
 
 func TestConsumer_Start_CancelsCleanly(t *testing.T) {
@@ -187,10 +215,8 @@ func TestConsumer_Start_CancelsCleanly(t *testing.T) {
 			GroupID: "test-group",
 		},
 	}
-	consumer := &Consumer{
-		reader: mockReader,
-		logger: logger,
-	}
+	handler := &mockEventHandler{}
+	consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -198,6 +224,41 @@ func TestConsumer_Start_CancelsCleanly(t *testing.T) {
 	err := consumer.Start(ctx)
 	assert.NoError(t, err)
 	assert.True(t, mockReader.closeCalled)
+}
+
+func TestConsumer_Start_HandlerError(t *testing.T) {
+	event := Event{
+		EventID:       "event-1",
+		EventType:     "TutorCreated",
+		AggregateType: "Tutor",
+		AggregateID:   "1",
+		Payload:       json.RawMessage(`{"id": 1}`),
+		CreatedAt:     "2025-12-20T10:00:00Z",
+	}
+	eventBytes, _ := json.Marshal(event)
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	mockReader := &mockKafkaReader{
+		messages: []kafka.Message{
+			{Key: []byte("1"), Value: eventBytes, Offset: 0},
+		},
+		configReturn: kafka.ReaderConfig{
+			Topic:   "test-topic",
+			GroupID: "test-group",
+		},
+	}
+	handler := &mockEventHandler{
+		handleError: errors.New("handler error"),
+	}
+	consumer := NewConsumerWithReader(mockReader, handler, logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	err := consumer.Start(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, mockReader.readIndex)
+	assert.Equal(t, 0, len(handler.getHandledEvents()))
 }
 
 func TestConsumer_Close(t *testing.T) {
@@ -222,10 +283,8 @@ func TestConsumer_Close(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 			mockReader := &mockKafkaReader{closeError: tt.closeError}
-			consumer := &Consumer{
-				reader: mockReader,
-				logger: logger,
-			}
+			handler := &mockEventHandler{}
+			consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 			err := consumer.Close()
 			if tt.wantErr {
@@ -264,10 +323,8 @@ func TestConsumer_Start_MultipleEventTypes(t *testing.T) {
 			GroupID: "search-service",
 		},
 	}
-	consumer := &Consumer{
-		reader: mockReader,
-		logger: logger,
-	}
+	handler := &mockEventHandler{}
+	consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -275,6 +332,7 @@ func TestConsumer_Start_MultipleEventTypes(t *testing.T) {
 	err := consumer.Start(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, len(events), mockReader.readIndex)
+	assert.Equal(t, len(events), len(handler.getHandledEvents()))
 }
 
 func TestConsumer_Start_ContextCancellation(t *testing.T) {
@@ -286,10 +344,8 @@ func TestConsumer_Start_ContextCancellation(t *testing.T) {
 			GroupID: "test-group",
 		},
 	}
-	consumer := &Consumer{
-		reader: mockReader,
-		logger: logger,
-	}
+	handler := &mockEventHandler{}
+	consumer := NewConsumerWithReader(mockReader, handler, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

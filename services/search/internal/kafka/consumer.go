@@ -15,10 +15,16 @@ type MessageReader interface {
 	Config() kafka.ReaderConfig
 }
 
+// EventHandler defines the interface for handling events.
+type EventHandler interface {
+	Handle(ctx context.Context, event Event) error
+}
+
 // Consumer reads events from Kafka and processes them.
 type Consumer struct {
-	reader MessageReader
-	logger *slog.Logger
+	reader  MessageReader
+	handler EventHandler
+	logger  *slog.Logger
 }
 
 // Config holds Kafka consumer configuration.
@@ -29,7 +35,7 @@ type Config struct {
 }
 
 // NewConsumer creates a new Kafka consumer.
-func NewConsumer(cfg Config, logger *slog.Logger) *Consumer {
+func NewConsumer(cfg Config, handler EventHandler, logger *slog.Logger) *Consumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  cfg.Brokers,
 		Topic:    cfg.Topic,
@@ -39,13 +45,22 @@ func NewConsumer(cfg Config, logger *slog.Logger) *Consumer {
 	})
 
 	return &Consumer{
-		reader: reader,
-		logger: logger,
+		reader:  reader,
+		handler: handler,
+		logger:  logger,
+	}
+}
+
+// NewConsumerWithReader creates a new Kafka consumer with a custom reader (for testing).
+func NewConsumerWithReader(reader MessageReader, handler EventHandler, logger *slog.Logger) *Consumer {
+	return &Consumer{
+		reader:  reader,
+		handler: handler,
+		logger:  logger,
 	}
 }
 
 // Start begins consuming messages from Kafka.
-// Phase 2: Log-only, no side effects yet.
 func (c *Consumer) Start(ctx context.Context) error {
 	c.logger.Info("Starting Kafka consumer",
 		"topic", c.reader.Config().Topic,
@@ -76,10 +91,19 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			c.logger.Info("Received event",
+			if err := c.handler.Handle(ctx, event); err != nil {
+				c.logger.Error("Failed to handle event",
+					"event_id", event.EventID,
+					"event_type", event.EventType,
+					"aggregate_id", event.AggregateID,
+					"error", err,
+				)
+				continue
+			}
+
+			c.logger.Info("Event processed successfully",
 				"event_id", event.EventID,
 				"event_type", event.EventType,
-				"aggregate_type", event.AggregateType,
 				"aggregate_id", event.AggregateID,
 				"offset", msg.Offset,
 			)
