@@ -1,4 +1,4 @@
-.PHONY: help up down logs lint lint-frontend lint-backend lint-go test test-frontend test-backend test-go check generate-schema generate-api migrate shell-frontend shell-backend format format-frontend format-backend format-go format-go-check search-build search-logs search-shell
+.PHONY: help up down logs lint lint-frontend lint-backend lint-go test test-frontend test-backend test-go check generate-schema generate-api migrate shell-frontend shell-backend format format-frontend format-backend format-go search-build search-logs search-shell
 
 # Default target
 help:
@@ -138,6 +138,7 @@ check: lint test
 	@echo ""
 	@echo "  Go Search Service:"
 	@echo "    ✓ go vet"
+	@echo "    ✓ gofmt check"
 	@echo "    ✓ go test"
 	@echo ""
 
@@ -177,23 +178,19 @@ shell-backend:
 # Go Search Service
 # =============================================================================
 
-GO_RUN = docker run --rm -w /app -v $(PWD)/services/search:/app golang:1.23-alpine
-
 lint-go:
 	@echo "🔍 Running Go linter (go vet)..."
-	$(GO_RUN) go vet ./...
+	docker compose exec search-service go vet ./...
+	@echo "🔍 Checking Go formatting..."
+	docker compose exec search-service sh -c 'test -z "$$(gofmt -l .)" || (echo "Go files not formatted:" && gofmt -l . && exit 1)'
 
 test-go:
 	@echo "🧪 Running Go tests..."
-	$(GO_RUN) go test -v ./...
+	docker compose exec search-service go test -v ./...
 
 format-go:
 	@echo "🎨 Formatting Go code..."
-	$(GO_RUN) gofmt -w .
-
-format-go-check:
-	@echo "🔍 Checking Go formatting..."
-	$(GO_RUN) sh -c 'test -z "$$(gofmt -l .)" || (echo "Go files not formatted:" && gofmt -l . && exit 1)'
+	docker compose exec search-service gofmt -w .
 
 search-build:
 	docker compose build search-service

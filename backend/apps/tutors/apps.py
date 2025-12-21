@@ -11,3 +11,6 @@ class TutorsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.tutors"
     verbose_name = "Tutors"
+
+    def ready(self):
+        import apps.tutors.signals  # noqa: F401, PLC0415

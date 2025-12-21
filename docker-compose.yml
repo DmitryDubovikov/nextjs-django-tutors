@@ -89,11 +89,32 @@ services:
     networks:
       - tutors-network
 
-  celery:
+  celery-worker:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
     command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - tutors-network
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    command: celery -A config beat --loglevel=info
     volumes:
       - ./backend:/app
     env_file:
@@ -103,6 +124,42 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - tutors-network
+
+  redpanda:
+    image: redpandadata/redpanda:v25.3.2
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=redpanda:8082
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tutors-network
+
+  redpanda-console:
+    image: redpandadata/console:v3.3.2
+    ports:
+      - "8084:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+    depends_on:
+      - redpanda
     networks:
       - tutors-network
 
@@ -127,15 +184,23 @@ services:
   search-service:
     build:
       context: ./services/search
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "8080:8080"
+    volumes:
+      - ./services/search:/app
+      - go-mod-cache:/go/pkg/mod
     environment:
       - OPENSEARCH_URL=http://opensearch:9200
       - PORT=8080
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - KAFKA_BROKERS=redpanda:9092
+      - KAFKA_TOPIC=tutor-events
+      - KAFKA_GROUP_ID=search-service
     depends_on:
       opensearch:
+        condition: service_healthy
+      redpanda:
         condition: service_healthy
     networks:
       - tutors-network
@@ -145,6 +210,8 @@ volumes:
   redis_data:
   minio_data:
   opensearch_data:
+  redpanda_data:
+  go-mod-cache:
 
 networks:
   tutors-network:

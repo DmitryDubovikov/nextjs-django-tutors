@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.bookings",
     "apps.chat",
     "apps.payments",
+    "apps.events",
 ]
 
 MIDDLEWARE = [
@@ -255,3 +256,16 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Search Service Configuration
 SEARCH_SERVICE_URL = env("SEARCH_SERVICE_URL", default="http://search-service:8080")
+
+
+# Kafka Configuration
+KAFKA_BOOTSTRAP_SERVERS = env.str("KAFKA_BOOTSTRAP_SERVERS", default="redpanda:9092")
+
+
+# Celery Beat Schedule
+CELERY_BEAT_SCHEDULE = {
+    "publish-outbox-events": {
+        "task": "apps.events.tasks.publish_outbox_events",
+        "schedule": 1.0,
+    },
+}

@@ -32,6 +32,8 @@ dependencies = [
     "django-storages>=1.14,<2.0",
     # Search
     "opensearch-py>=2.8,<3.0",
+    # Kafka
+    "kafka-python>=2.0,<3.0",
     # Feature Flags
     "UnleashClient>=6.1,<7.0",
     # Utilities
