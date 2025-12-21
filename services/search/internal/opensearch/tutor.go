@@ -52,19 +52,23 @@ func (c *Client) UpsertTutor(ctx context.Context, tutor *domain.Tutor) error {
 }
 
 func (c *Client) DeleteTutor(ctx context.Context, id int64) error {
-	_, err := c.client.Document.Delete(ctx, opensearchapi.DocumentDeleteReq{
+	resp, err := c.client.Document.Delete(ctx, opensearchapi.DocumentDeleteReq{
 		Index:      IndexName,
 		DocumentID: strconv.FormatInt(id, 10),
 		Params: opensearchapi.DocumentDeleteParams{
 			Refresh: "true",
 		},
 	})
-	// Ignore not found errors on delete
 	if err != nil {
-		c.logger.Debug("Tutor delete error (may be not found)", "id", id, "error", err)
+		return fmt.Errorf("failed to delete tutor from index: %w", err)
 	}
 
-	c.logger.Debug("Tutor deleted", "id", id)
+	if resp.Result == "not_found" {
+		c.logger.Debug("Tutor not found in index (already deleted)", "id", id)
+		return nil
+	}
+
+	c.logger.Debug("Tutor deleted", "id", id, "result", resp.Result)
 	return nil
 }
 

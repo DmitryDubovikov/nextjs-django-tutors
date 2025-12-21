@@ -28,6 +28,8 @@ services/search/
 │   │   └── router.go       # Route definitions
 │   ├── domain/             # Domain models
 │   │   └── tutor.go        # Tutor entity
+│   ├── handler/            # Event handler (Phase 3)
+│   │   └── handler.go      # Routes events to OpenSearch
 │   ├── kafka/              # Kafka consumer
 │   │   ├── consumer.go     # Kafka message consumer
 │   │   ├── event.go        # Event structure
@@ -135,24 +137,65 @@ const { data } = useSearch({
 
 The service consumes events from Kafka (Redpanda) for real-time tutor updates.
 
-### Event Flow
+### Event Processing Architecture
 
 ```
-Django → OutboxEvent → Celery → Kafka → Go Consumer → OpenSearch
+┌─────────────────┐
+│  Kafka Consumer │
+│  (consumer.go)  │
+└────────┬────────┘
+         │ reads messages
+         ▼
+┌─────────────────┐
+│  Event struct   │
+│  (event.go)     │
+└────────┬────────┘
+         │ unmarshals JSON
+         ▼
+┌─────────────────┐
+│  EventHandler   │
+│  (handler.go)   │
+└────────┬────────┘
+         │ routes by event_type
+         ▼
+    ┌────┴────┬─────────────┐
+    ▼         ▼             ▼
+┌────────┐ ┌───────┐  ┌────────┐
+│ Create │ │Update │  │ Delete │
+└───┬────┘ └───┬───┘  └───┬────┘
+    └──────────┴──────────┘
+               ▼
+      ┌────────────────┐
+      │   OpenSearch   │
+      │  tutors index  │
+      └────────────────┘
 ```
 
 ### Events Consumed
 
-- `TutorCreated` - Index new tutor
-- `TutorUpdated` - Update existing tutor
-- `TutorDeleted` - Remove tutor from index
+| Event | Action | Handler |
+|-------|--------|---------|
+| `TutorCreated` | Index new tutor | `handleTutorUpsert()` |
+| `TutorUpdated` | Update existing tutor | `handleTutorUpsert()` |
+| `TutorDeleted` | Remove from index | `handleTutorDelete()` |
 
 See [docs/events/tutor-events.md](/docs/events/tutor-events.md) for event schema details.
 
-### Current Status
+### Error Handling
 
-**Phase 2**: Consumer logs events only (no OpenSearch writes)
-**Phase 3**: Consumer will index events to OpenSearch
+- Failed events are logged with full context
+- Consumer continues processing next events
+- All OpenSearch operations are idempotent (reprocessing is safe)
+
+### Monitoring
+
+```bash
+# View consumer logs
+docker compose logs -f search-service
+
+# Check consumer group (via Redpanda Console)
+open http://localhost:8084
+```
 
 ## Dependencies
 
