@@ -12,6 +12,7 @@ The Search Service is a high-performance microservice written in Go that handles
 - Filtering by subjects, price range, rating, location, and format
 - Real-time indexing via REST API
 - Bulk synchronization from Django
+- Kafka event consumption for real-time sync
 - Health monitoring and graceful shutdown
 
 ## Architecture
@@ -27,6 +28,10 @@ services/search/
 │   │   └── router.go       # Route definitions
 │   ├── domain/             # Domain models
 │   │   └── tutor.go        # Tutor entity
+│   ├── kafka/              # Kafka consumer
+│   │   ├── consumer.go     # Kafka message consumer
+│   │   ├── event.go        # Event structure
+│   │   └── *_test.go       # Unit tests
 │   └── opensearch/         # OpenSearch client
 │       ├── client.go       # OpenSearch connection
 │       ├── index.go        # Index management
@@ -57,6 +62,9 @@ See [docs/api/search-api.md](/docs/api/search-api.md) for detailed API documenta
 | `OPENSEARCH_URL` | `http://localhost:9200` | OpenSearch connection URL |
 | `PORT` | `8080` | HTTP server port |
 | `CORS_ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
+| `KAFKA_BROKERS` | `localhost:9092` | Kafka broker addresses (comma-separated) |
+| `KAFKA_TOPIC` | `tutor-events` | Kafka topic for tutor events |
+| `KAFKA_GROUP_ID` | `search-service` | Consumer group ID |
 
 ## Development
 
@@ -123,7 +131,31 @@ const { data } = useSearch({
 })
 ```
 
+## Kafka Integration
+
+The service consumes events from Kafka (Redpanda) for real-time tutor updates.
+
+### Event Flow
+
+```
+Django → OutboxEvent → Celery → Kafka → Go Consumer → OpenSearch
+```
+
+### Events Consumed
+
+- `TutorCreated` - Index new tutor
+- `TutorUpdated` - Update existing tutor
+- `TutorDeleted` - Remove tutor from index
+
+See [docs/events/tutor-events.md](/docs/events/tutor-events.md) for event schema details.
+
+### Current Status
+
+**Phase 2**: Consumer logs events only (no OpenSearch writes)
+**Phase 3**: Consumer will index events to OpenSearch
+
 ## Dependencies
 
 - `github.com/go-chi/chi/v5` - HTTP router
 - `github.com/opensearch-project/opensearch-go/v4` - OpenSearch client
+- `github.com/segmentio/kafka-go` - Kafka consumer

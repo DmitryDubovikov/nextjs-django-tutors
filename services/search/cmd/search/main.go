@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"search/internal/api"
+	"search/internal/kafka"
 	"search/internal/opensearch"
 )
 
@@ -23,11 +25,16 @@ func main() {
 	opensearchURL := getEnv("OPENSEARCH_URL", "http://localhost:9200")
 	port := getEnv("PORT", "8080")
 	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS", "*")
+	kafkaBrokers := getEnv("KAFKA_BROKERS", "localhost:9092")
+	kafkaTopic := getEnv("KAFKA_TOPIC", "tutor-events")
+	kafkaGroupID := getEnv("KAFKA_GROUP_ID", "search-service")
 
 	logger.Info("Starting search service",
 		"opensearch_url", opensearchURL,
 		"port", port,
 		"cors_origins", corsOrigins,
+		"kafka_brokers", kafkaBrokers,
+		"kafka_topic", kafkaTopic,
 	)
 
 	osClient, err := opensearch.NewClient(opensearchURL, logger)
@@ -48,6 +55,18 @@ func main() {
 		logger.Error("Failed to ensure index", "error", err)
 		os.Exit(1)
 	}
+
+	consumer := kafka.NewConsumer(kafka.Config{
+		Brokers: strings.Split(kafkaBrokers, ","),
+		Topic:   kafkaTopic,
+		GroupID: kafkaGroupID,
+	}, logger)
+
+	go func() {
+		if err := consumer.Start(ctx); err != nil {
+			logger.Error("Kafka consumer error", "error", err)
+		}
+	}()
 
 	router := api.NewRouter(osClient, logger, corsOrigins)
 
