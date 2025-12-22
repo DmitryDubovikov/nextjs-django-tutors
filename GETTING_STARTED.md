@@ -28,14 +28,26 @@ docker compose exec backend python manage.py seed --count 20
 
 After installation, the following services will be available:
 
-| Service | URL | Credentials |
+| Service | URL | Description |
 |---------|-----|-------------|
-| Frontend | http://localhost:3000 | — |
-| Backend API | http://localhost:8000/api/ | — |
-| API Docs (Swagger) | http://localhost:8000/api/docs/ | — |
-| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
-| PostgreSQL | localhost:5432 | tutors / secret |
-| Redis | localhost:6379 | — |
+| Frontend | http://localhost:3000 | Next.js 15 application |
+| Backend API | http://localhost:8000/api/ | Django REST API |
+| API Docs (Swagger) | http://localhost:8000/api/docs/ | Interactive API docs |
+| Search Service | http://localhost:8080 | Go search microservice |
+| Unleash | http://localhost:4242 | Feature flags admin UI |
+| MinIO Console | http://localhost:9001 | S3 storage (minioadmin/minioadmin) |
+| Redpanda Console | http://localhost:8084 | Kafka message browser |
+| OpenSearch | http://localhost:9200 | Full-text search engine |
+| PostgreSQL | localhost:5432 | Database (tutors/secret) |
+| Redis | localhost:6379 | Cache & Celery broker |
+
+### Background Services (no UI)
+
+| Service | Description |
+|---------|-------------|
+| Celery Worker | Executes async tasks (indexing, notifications) |
+| Celery Beat | Scheduled/periodic tasks |
+| Redpanda (Kafka) | Message broker on port 9092 |
 
 ## Common Commands
 
@@ -67,6 +79,70 @@ make generate-api
 ```
 
 This exports the OpenAPI schema from backend and generates TypeScript types + TanStack Query hooks via Orval.
+
+## Background Tasks
+
+Celery handles async task processing:
+
+```bash
+# View Celery logs
+docker compose logs -f celery-worker celery-beat
+
+# Run a task manually (from backend shell)
+docker compose exec backend python manage.py shell
+>>> from apps.events.tasks import sync_tutors_to_search
+>>> sync_tutors_to_search.delay()
+```
+
+## Event-Driven Architecture
+
+Events flow through Kafka (Redpanda):
+
+1. Django publishes tutor events to Kafka topic `tutor-events`
+2. Search Service (Go) consumes events
+3. Tutors are indexed in OpenSearch
+
+Monitor events at http://localhost:8084 (Redpanda Console)
+
+```bash
+# Check Kafka topics
+docker compose exec redpanda rpk topic list
+
+# Consume messages from a topic
+docker compose exec redpanda rpk topic consume tutor-events
+```
+
+## Feature Flags (Unleash)
+
+Unleash manages feature flags for A/B testing and gradual rollouts.
+
+**Admin UI:** http://localhost:4242
+
+**Default tokens (pre-configured):**
+- Admin API: `*:*.unleash-admin-token`
+- Client API: `default:development.unleash-client-token`
+
+**Usage in backend (Python):**
+```python
+from UnleashClient import UnleashClient
+
+client = UnleashClient(
+    url="http://unleash:4242/api",
+    app_name="tutors-backend",
+    custom_headers={"Authorization": "default:development.unleash-client-token"}
+)
+client.initialize_client()
+
+if client.is_enabled("new-search-ui"):
+    # Show new search UI
+    pass
+```
+
+**Creating a feature flag:**
+1. Open http://localhost:4242
+2. Create new flag (e.g., `new-tutor-card`)
+3. Enable for specific environments or user segments
+4. Use in code to conditionally enable features
 
 ## Environment Variables
 
