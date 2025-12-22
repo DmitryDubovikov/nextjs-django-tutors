@@ -269,3 +269,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 1.0,
     },
 }
+
+
+# Unleash Feature Flags Configuration
+UNLEASH_URL = env("UNLEASH_URL", default="http://unleash:4242/api")
+UNLEASH_APP_NAME = env("UNLEASH_APP_NAME", default="tutors-backend")
+UNLEASH_INSTANCE_ID = env("UNLEASH_INSTANCE_ID", default="backend-1")
+UNLEASH_API_TOKEN = env("UNLEASH_API_TOKEN", default="default:development.unleash-client-token")

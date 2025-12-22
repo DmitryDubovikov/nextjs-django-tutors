@@ -2,6 +2,8 @@
 URL configuration for Tutors Marketplace project.
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -18,3 +20,7 @@ urlpatterns = [
     path("api/", include("apps.chat.urls")),
     path("api/", include("apps.payments.urls")),
 ]
+
+# Serve static files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

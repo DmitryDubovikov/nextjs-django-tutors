@@ -300,6 +300,88 @@
                 }
             }
         },
+        "/api/analytics/conversion/": {
+            "post": {
+                "operationId": "analytics_conversion_create",
+                "description": "Record a conversion event linked to an experiment",
+                "summary": "Record conversion event",
+                "tags": [
+                    "analytics"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversionEventRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversionEventRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversionEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/analytics/exposure/": {
+            "post": {
+                "operationId": "analytics_exposure_create",
+                "description": "Record that a user was exposed to an experiment variant",
+                "summary": "Record exposure event",
+                "tags": [
+                    "analytics"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExposureEventRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExposureEventRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExposureEventRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/api/auth/github/": {
             "post": {
                 "operationId": "auth_github_create",
@@ -1124,6 +1206,34 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ChatRoom"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/feature-flags/": {
+            "get": {
+                "operationId": "feature_flags_retrieve",
+                "description": "Get all feature flags and experiment variants for the current user",
+                "summary": "Get feature flags",
+                "tags": [
+                    "feature-flags"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeatureFlagsResponse"
                                 }
                             }
                         },
@@ -2085,6 +2195,41 @@
                     "status"
                 ]
             },
+            "ConversionEventRequest": {
+                "type": "object",
+                "description": "Serializer for conversion events linked to experiments.",
+                "properties": {
+                    "experiment": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Experiment name"
+                    },
+                    "variant": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Variant name"
+                    },
+                    "metric": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MetricEnum"
+                            }
+                        ],
+                        "description": "Type of conversion event\n\n* `click` - click\n* `booking` - booking\n* `checkout_success` - checkout_success\n* `checkout_abandon` - checkout_abandon"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true,
+                        "description": "Additional metadata for the event"
+                    }
+                },
+                "required": [
+                    "experiment",
+                    "metric",
+                    "variant"
+                ]
+            },
             "CreateBooking": {
                 "type": "object",
                 "description": "Serializer for creating new bookings.\n\nAutomatically sets the student and calculates price based on tutor's hourly rate.",
@@ -2253,6 +2398,54 @@
                 "type": "string",
                 "description": "* `payment_intent.succeeded` - Payment Succeeded\n* `payment_intent.failed` - Payment Failed"
             },
+            "ExposureEventRequest": {
+                "type": "object",
+                "description": "Serializer for experiment exposure events.",
+                "properties": {
+                    "experiment": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Experiment name"
+                    },
+                    "variant": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Variant name the user was exposed to"
+                    },
+                    "session_id": {
+                        "type": "string",
+                        "description": "Client session ID"
+                    }
+                },
+                "required": [
+                    "experiment",
+                    "variant"
+                ]
+            },
+            "FeatureFlagsResponse": {
+                "type": "object",
+                "description": "Serializer for feature flags response.",
+                "properties": {
+                    "flags": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "boolean"
+                        },
+                        "description": "Feature flag name to enabled status mapping"
+                    },
+                    "experiments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Experiment name to variant name mapping"
+                    }
+                },
+                "required": [
+                    "experiments",
+                    "flags"
+                ]
+            },
             "GitHubAuthRequest": {
                 "type": "object",
                 "description": "Serializer for GitHub OAuth authentication request.",
@@ -2294,6 +2487,16 @@
                 "required": [
                     "refresh"
                 ]
+            },
+            "MetricEnum": {
+                "enum": [
+                    "click",
+                    "booking",
+                    "checkout_success",
+                    "checkout_abandon"
+                ],
+                "type": "string",
+                "description": "* `click` - click\n* `booking` - booking\n* `checkout_success` - checkout_success\n* `checkout_abandon` - checkout_abandon"
             },
             "PaginatedBookingList": {
                 "type": "object",
