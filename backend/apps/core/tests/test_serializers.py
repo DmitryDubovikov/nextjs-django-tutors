@@ -7,6 +7,9 @@ Tests authentication serializers for Google/GitHub OAuth and JWT tokens.
 import pytest
 
 from apps.core.serializers import (
+    ConversionEventSerializer,
+    ExposureEventSerializer,
+    FeatureFlagsResponseSerializer,
     GitHubAuthSerializer,
     GoogleAuthSerializer,
     LogoutSerializer,
@@ -201,3 +204,249 @@ class TestLogoutSerializer:
 
         assert "refresh" in serializer.fields
         assert "blacklist" in serializer.fields["refresh"].help_text.lower()
+
+
+class TestFeatureFlagsResponseSerializer:
+    """Tests for FeatureFlagsResponseSerializer."""
+
+    def test_valid_with_flags_and_experiments(self):
+        """FeatureFlagsResponseSerializer validates with flags and experiments."""
+        data = {
+            "flags": {
+                "semantic_search_enabled": True,
+                "chat_reactions_enabled": False,
+            },
+            "experiments": {
+                "tutor_card_experiment": "v2",
+                "checkout_flow_experiment": "control",
+            },
+        }
+
+        serializer = FeatureFlagsResponseSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["flags"]["semantic_search_enabled"] is True
+        assert serializer.validated_data["experiments"]["tutor_card_experiment"] == "v2"
+
+    def test_coerces_string_to_boolean_for_flags(self):
+        """FeatureFlagsResponseSerializer coerces 'true' string to boolean."""
+        data = {
+            "flags": {"semantic_search_enabled": "true"},  # String coerced to boolean
+            "experiments": {"tutor_card_experiment": "v2"},
+        }
+
+        serializer = FeatureFlagsResponseSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["flags"]["semantic_search_enabled"] is True
+
+    def test_coerces_number_to_string_for_experiments(self):
+        """FeatureFlagsResponseSerializer coerces numbers to strings for experiments."""
+        data = {
+            "flags": {"semantic_search_enabled": True},
+            "experiments": {"tutor_card_experiment": 2},  # Number coerced to string
+        }
+
+        serializer = FeatureFlagsResponseSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["experiments"]["tutor_card_experiment"] == "2"
+
+    def test_valid_with_empty_dicts(self):
+        """FeatureFlagsResponseSerializer validates with empty dicts."""
+        data = {"flags": {}, "experiments": {}}
+
+        serializer = FeatureFlagsResponseSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["flags"] == {}
+        assert serializer.validated_data["experiments"] == {}
+
+    def test_has_help_text(self):
+        """FeatureFlagsResponseSerializer has descriptive help text."""
+        serializer = FeatureFlagsResponseSerializer()
+
+        assert "flags" in serializer.fields
+        assert "experiments" in serializer.fields
+        assert serializer.fields["flags"].help_text
+        assert serializer.fields["experiments"].help_text
+
+
+class TestExposureEventSerializer:
+    """Tests for ExposureEventSerializer."""
+
+    def test_valid_with_required_fields(self):
+        """ExposureEventSerializer validates with experiment and variant."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+        }
+
+        serializer = ExposureEventSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["experiment"] == "tutor_card_experiment"
+        assert serializer.validated_data["variant"] == "v2"
+
+    def test_valid_with_session_id(self):
+        """ExposureEventSerializer validates with optional session_id."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "session_id": "session-123",
+        }
+
+        serializer = ExposureEventSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["session_id"] == "session-123"
+
+    def test_valid_with_empty_session_id(self):
+        """ExposureEventSerializer validates with empty session_id."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "session_id": "",
+        }
+
+        serializer = ExposureEventSerializer(data=data)
+
+        assert serializer.is_valid()
+
+    def test_invalid_without_experiment(self):
+        """ExposureEventSerializer is invalid without experiment."""
+        data = {"variant": "v2"}
+
+        serializer = ExposureEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "experiment" in serializer.errors
+
+    def test_invalid_without_variant(self):
+        """ExposureEventSerializer is invalid without variant."""
+        data = {"experiment": "tutor_card_experiment"}
+
+        serializer = ExposureEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "variant" in serializer.errors
+
+    def test_has_help_text(self):
+        """ExposureEventSerializer has descriptive help text."""
+        serializer = ExposureEventSerializer()
+
+        assert "experiment" in serializer.fields
+        assert "variant" in serializer.fields
+        assert serializer.fields["experiment"].help_text
+        assert serializer.fields["variant"].help_text
+
+
+class TestConversionEventSerializer:
+    """Tests for ConversionEventSerializer."""
+
+    def test_valid_with_all_fields(self):
+        """ConversionEventSerializer validates with all fields."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "click",
+            "metadata": {"tutorId": 123, "subject": "math"},
+        }
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data["experiment"] == "tutor_card_experiment"
+        assert serializer.validated_data["variant"] == "v2"
+        assert serializer.validated_data["metric"] == "click"
+        assert serializer.validated_data["metadata"] == {"tutorId": 123, "subject": "math"}
+
+    def test_valid_with_all_metric_choices(self):
+        """ConversionEventSerializer validates all metric choices."""
+        valid_metrics = ["click", "booking", "checkout_success", "checkout_abandon"]
+
+        for metric in valid_metrics:
+            data = {
+                "experiment": "tutor_card_experiment",
+                "variant": "v2",
+                "metric": metric,
+            }
+
+            serializer = ConversionEventSerializer(data=data)
+            assert serializer.is_valid(), f"Failed for metric: {metric}"
+
+    def test_invalid_with_invalid_metric(self):
+        """ConversionEventSerializer is invalid with invalid metric."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "invalid_metric",
+        }
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "metric" in serializer.errors
+
+    def test_valid_without_metadata(self):
+        """ConversionEventSerializer validates without metadata (optional)."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "click",
+        }
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert serializer.is_valid()
+
+    def test_valid_with_null_metadata(self):
+        """ConversionEventSerializer validates with null metadata."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "click",
+            "metadata": None,
+        }
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert serializer.is_valid()
+
+    def test_invalid_without_experiment(self):
+        """ConversionEventSerializer is invalid without experiment."""
+        data = {"variant": "v2", "metric": "click"}
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "experiment" in serializer.errors
+
+    def test_invalid_without_variant(self):
+        """ConversionEventSerializer is invalid without variant."""
+        data = {"experiment": "tutor_card_experiment", "metric": "click"}
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "variant" in serializer.errors
+
+    def test_invalid_without_metric(self):
+        """ConversionEventSerializer is invalid without metric."""
+        data = {"experiment": "tutor_card_experiment", "variant": "v2"}
+
+        serializer = ConversionEventSerializer(data=data)
+
+        assert not serializer.is_valid()
+        assert "metric" in serializer.errors
+
+    def test_has_help_text(self):
+        """ConversionEventSerializer has descriptive help text."""
+        serializer = ConversionEventSerializer()
+
+        assert "experiment" in serializer.fields
+        assert "variant" in serializer.fields
+        assert "metric" in serializer.fields
+        assert serializer.fields["experiment"].help_text
+        assert serializer.fields["variant"].help_text
+        assert serializer.fields["metric"].help_text

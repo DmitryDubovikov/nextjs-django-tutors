@@ -7,9 +7,12 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
+    ConversionEventView,
     CredentialsLoginView,
     CredentialsRegisterView,
     CurrentUserView,
+    ExposureEventView,
+    FeatureFlagsView,
     FileUploadView,
     GitHubAuthView,
     GoogleAuthView,
@@ -29,4 +32,9 @@ urlpatterns = [
     # Credentials auth (enabled via ENABLE_CREDENTIALS_AUTH env var)
     path("auth/login/", CredentialsLoginView.as_view(), name="auth-login"),
     path("auth/register/", CredentialsRegisterView.as_view(), name="auth-register"),
+    # Feature flags
+    path("feature-flags/", FeatureFlagsView.as_view(), name="feature-flags"),
+    # Analytics endpoints
+    path("analytics/exposure/", ExposureEventView.as_view(), name="analytics-exposure"),
+    path("analytics/conversion/", ConversionEventView.as_view(), name="analytics-conversion"),
 ]

@@ -24,10 +24,14 @@ from google.oauth2 import id_token
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .feature_flags import get_all_flags
 from .models import User
 from .serializers import (
+    ConversionEventSerializer,
     CredentialsLoginSerializer,
     CredentialsRegisterSerializer,
+    ExposureEventSerializer,
+    FeatureFlagsResponseSerializer,
     GitHubAuthSerializer,
     GoogleAuthSerializer,
     LogoutSerializer,
@@ -621,3 +625,108 @@ class CredentialsRegisterView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class FeatureFlagsView(APIView):
+    """
+    Get feature flags and experiment variants for the current user.
+
+    Backend is the source of truth for all feature flags and experiments.
+    Frontend should call this endpoint on app initialization to bootstrap
+    feature flags state.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Get feature flags",
+        description="Get all feature flags and experiment variants for the current user",
+        responses={200: FeatureFlagsResponseSerializer},
+        tags=["feature-flags"],
+    )
+    def get(self, request):
+        """Return feature flags and experiment variants."""
+        user = request.user if request.user.is_authenticated else None
+        flags_data = get_all_flags(user)
+        return Response(flags_data)
+
+
+class ExposureEventView(APIView):
+    """
+    Record experiment exposure events.
+
+    Called when a user is exposed to an experiment variant.
+    Events are deduplicated by experiment + user on the frontend,
+    but backend can also implement deduplication if needed.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Record exposure event",
+        description="Record that a user was exposed to an experiment variant",
+        request=ExposureEventSerializer,
+        responses={201: None},
+        tags=["analytics"],
+    )
+    def post(self, request):
+        """Record an exposure event."""
+        serializer = ExposureEventSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = request.user.id if request.user.is_authenticated else None
+        experiment = serializer.validated_data["experiment"]
+        variant = serializer.validated_data["variant"]
+        session_id = serializer.validated_data.get("session_id", "")
+
+        logger.info(
+            "Exposure event: experiment=%s variant=%s user_id=%s session_id=%s",
+            experiment,
+            variant,
+            user_id,
+            session_id,
+        )
+
+        return Response(status=status.HTTP_201_CREATED)
+
+
+class ConversionEventView(APIView):
+    """
+    Record conversion events linked to experiments.
+
+    Called when a user performs a conversion action (click, booking, etc.)
+    while participating in an experiment.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Record conversion event",
+        description="Record a conversion event linked to an experiment",
+        request=ConversionEventSerializer,
+        responses={201: None},
+        tags=["analytics"],
+    )
+    def post(self, request):
+        """Record a conversion event."""
+        serializer = ConversionEventSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = request.user.id if request.user.is_authenticated else None
+        experiment = serializer.validated_data["experiment"]
+        variant = serializer.validated_data["variant"]
+        metric = serializer.validated_data["metric"]
+        metadata = serializer.validated_data.get("metadata", {})
+
+        logger.info(
+            "Conversion event: experiment=%s variant=%s metric=%s user_id=%s metadata=%s",
+            experiment,
+            variant,
+            metric,
+            user_id,
+            metadata,
+        )
+
+        return Response(status=status.HTTP_201_CREATED)

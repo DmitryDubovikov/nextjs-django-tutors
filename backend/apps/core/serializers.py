@@ -85,3 +85,42 @@ class CredentialsRegisterSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="User last name",
     )
+
+
+class FeatureFlagsResponseSerializer(serializers.Serializer):
+    """Serializer for feature flags response."""
+
+    flags = serializers.DictField(
+        child=serializers.BooleanField(),
+        help_text="Feature flag name to enabled status mapping",
+    )
+    experiments = serializers.DictField(
+        child=serializers.CharField(),
+        help_text="Experiment name to variant name mapping",
+    )
+
+
+class ExposureEventSerializer(serializers.Serializer):
+    """Serializer for experiment exposure events."""
+
+    experiment = serializers.CharField(help_text="Experiment name")
+    variant = serializers.CharField(help_text="Variant name the user was exposed to")
+    session_id = serializers.CharField(
+        required=False, allow_blank=True, help_text="Client session ID"
+    )
+
+
+class ConversionEventSerializer(serializers.Serializer):
+    """Serializer for conversion events linked to experiments."""
+
+    experiment = serializers.CharField(help_text="Experiment name")
+    variant = serializers.CharField(help_text="Variant name")
+    metric = serializers.ChoiceField(
+        choices=["click", "booking", "checkout_success", "checkout_abandon"],
+        help_text="Type of conversion event",
+    )
+    metadata = serializers.DictField(
+        required=False,
+        allow_null=True,
+        help_text="Additional metadata for the event",
+    )

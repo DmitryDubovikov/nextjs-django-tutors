@@ -457,3 +457,274 @@ class TestCurrentUserView:
         assert "last_name" in response.data
         assert "avatar" in response.data
         assert "user_type" in response.data
+
+
+@pytest.mark.django_db
+class TestFeatureFlagsView:
+    """Tests for FeatureFlagsView."""
+
+    @patch("apps.core.views.get_all_flags")
+    def test_get_feature_flags_anonymous_user(self, mock_get_all_flags, api_client):
+        """GET /api/feature-flags/ returns flags for anonymous user."""
+        mock_get_all_flags.return_value = {
+            "flags": {
+                "semantic_search_enabled": False,
+                "chat_reactions_enabled": True,
+            },
+            "experiments": {
+                "tutor_card_experiment": "control",
+                "checkout_flow_experiment": "control",
+            },
+        }
+
+        response = api_client.get("/api/feature-flags/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "flags" in response.data
+        assert "experiments" in response.data
+        mock_get_all_flags.assert_called_once_with(None)
+
+    @patch("apps.core.views.get_all_flags")
+    def test_get_feature_flags_authenticated_user(self, mock_get_all_flags, api_client):
+        """GET /api/feature-flags/ returns flags for authenticated user."""
+        user = UserFactory()
+        api_client.force_authenticate(user)
+
+        mock_get_all_flags.return_value = {
+            "flags": {
+                "semantic_search_enabled": True,
+                "chat_reactions_enabled": True,
+            },
+            "experiments": {
+                "tutor_card_experiment": "v2",
+                "checkout_flow_experiment": "streamlined",
+            },
+        }
+
+        response = api_client.get("/api/feature-flags/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["flags"]["semantic_search_enabled"] is True
+        assert response.data["experiments"]["tutor_card_experiment"] == "v2"
+        mock_get_all_flags.assert_called_once_with(user)
+
+    @patch("apps.core.views.get_all_flags")
+    def test_feature_flags_structure(self, mock_get_all_flags, api_client):
+        """GET /api/feature-flags/ returns correct structure."""
+        mock_get_all_flags.return_value = {
+            "flags": {
+                "semantic_search_enabled": False,
+                "chat_reactions_enabled": False,
+            },
+            "experiments": {
+                "tutor_card_experiment": "control",
+                "checkout_flow_experiment": "control",
+            },
+        }
+
+        response = api_client.get("/api/feature-flags/")
+
+        assert response.status_code == status.HTTP_200_OK
+        # Flags should be boolean values
+        assert all(isinstance(v, bool) for v in response.data["flags"].values())
+        # Experiments should be string values
+        assert all(isinstance(v, str) for v in response.data["experiments"].values())
+
+    @patch("apps.core.views.get_all_flags")
+    def test_feature_flags_does_not_require_authentication(self, mock_get_all_flags, api_client):
+        """GET /api/feature-flags/ works without authentication (AllowAny)."""
+        mock_get_all_flags.return_value = {"flags": {}, "experiments": {}}
+
+        response = api_client.get("/api/feature-flags/")
+
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestExposureEventView:
+    """Tests for ExposureEventView."""
+
+    def test_post_exposure_event_authenticated(self, api_client):
+        """POST /api/analytics/exposure/ records exposure event for authenticated user."""
+        user = UserFactory()
+        api_client.force_authenticate(user)
+
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "session_id": "session-123",
+        }
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_post_exposure_event_anonymous(self, api_client):
+        """POST /api/analytics/exposure/ records exposure event for anonymous user."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "control",
+            "session_id": "anon-session-456",
+        }
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_exposure_event_without_session_id(self, api_client):
+        """POST /api/analytics/exposure/ works without session_id (optional)."""
+        data = {
+            "experiment": "checkout_flow_experiment",
+            "variant": "streamlined",
+        }
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_exposure_event_missing_experiment(self, api_client):
+        """POST /api/analytics/exposure/ returns 400 without experiment."""
+        data = {"variant": "v2"}
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "experiment" in response.data
+
+    def test_exposure_event_missing_variant(self, api_client):
+        """POST /api/analytics/exposure/ returns 400 without variant."""
+        data = {"experiment": "tutor_card_experiment"}
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "variant" in response.data
+
+    def test_exposure_event_empty_session_id(self, api_client):
+        """POST /api/analytics/exposure/ accepts empty session_id."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "session_id": "",
+        }
+
+        response = api_client.post("/api/analytics/exposure/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+
+@pytest.mark.django_db
+class TestConversionEventView:
+    """Tests for ConversionEventView."""
+
+    def test_post_conversion_event_authenticated(self, api_client):
+        """POST /api/analytics/conversion/ records conversion event for authenticated user."""
+        user = UserFactory()
+        api_client.force_authenticate(user)
+
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "click",
+            "metadata": {"tutorId": 123},
+        }
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_post_conversion_event_anonymous(self, api_client):
+        """POST /api/analytics/conversion/ records conversion event for anonymous user."""
+        data = {
+            "experiment": "checkout_flow_experiment",
+            "variant": "streamlined",
+            "metric": "checkout_success",
+        }
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_conversion_event_all_metrics(self, api_client):
+        """POST /api/analytics/conversion/ accepts all valid metrics."""
+        valid_metrics = ["click", "booking", "checkout_success", "checkout_abandon"]
+
+        for metric in valid_metrics:
+            data = {
+                "experiment": "tutor_card_experiment",
+                "variant": "v2",
+                "metric": metric,
+            }
+
+            response = api_client.post("/api/analytics/conversion/", data, format="json")
+            assert response.status_code == status.HTTP_201_CREATED, f"Failed for metric: {metric}"
+
+    def test_conversion_event_invalid_metric(self, api_client):
+        """POST /api/analytics/conversion/ returns 400 for invalid metric."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v2",
+            "metric": "invalid_metric",
+        }
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "metric" in response.data
+
+    def test_conversion_event_without_metadata(self, api_client):
+        """POST /api/analytics/conversion/ works without metadata (optional)."""
+        data = {
+            "experiment": "checkout_flow_experiment",
+            "variant": "control",
+            "metric": "booking",
+        }
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_conversion_event_with_complex_metadata(self, api_client):
+        """POST /api/analytics/conversion/ accepts complex metadata."""
+        data = {
+            "experiment": "tutor_card_experiment",
+            "variant": "v3",
+            "metric": "click",
+            "metadata": {
+                "tutorId": 456,
+                "subject": "math",
+                "hourlyRate": 50.0,
+                "fromPage": "/tutors",
+            },
+        }
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_conversion_event_missing_experiment(self, api_client):
+        """POST /api/analytics/conversion/ returns 400 without experiment."""
+        data = {"variant": "v2", "metric": "click"}
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "experiment" in response.data
+
+    def test_conversion_event_missing_variant(self, api_client):
+        """POST /api/analytics/conversion/ returns 400 without variant."""
+        data = {"experiment": "tutor_card_experiment", "metric": "click"}
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "variant" in response.data
+
+    def test_conversion_event_missing_metric(self, api_client):
+        """POST /api/analytics/conversion/ returns 400 without metric."""
+        data = {"experiment": "tutor_card_experiment", "variant": "v2"}
+
+        response = api_client.post("/api/analytics/conversion/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "metric" in response.data

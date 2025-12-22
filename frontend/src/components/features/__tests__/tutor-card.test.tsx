@@ -1,7 +1,18 @@
 import type { Tutor } from '@/generated/schemas';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { TutorCard, TutorCardSkeleton } from '../tutor-card';
+import { describe, expect, it, vi } from 'vitest';
+import { TutorCard, TutorCardSkeleton, type TutorCardVariant } from '../tutor-card';
+
+// Mock experiment tracking to avoid session/fetch issues in tests
+vi.mock('@/lib/experiment-tracking', () => ({
+  useExperimentWithTracking: () => ({
+    variant: 'control',
+    trackClick: vi.fn(),
+    trackBooking: vi.fn(),
+    trackCheckoutSuccess: vi.fn(),
+    trackCheckoutAbandon: vi.fn(),
+  }),
+}));
 
 const mockTutor: Tutor = {
   id: 1,
@@ -145,5 +156,112 @@ describe('TutorCardSkeleton', () => {
 
     const subjectSkeletons = container.querySelectorAll('.rounded-full.animate-pulse');
     expect(subjectSkeletons.length).toBeGreaterThan(0);
+  });
+});
+
+describe('TutorCard variants', () => {
+  const variants: TutorCardVariant[] = ['control', 'compact', 'detailed'];
+
+  describe.each(variants)('%s variant', (variant) => {
+    it('renders tutor name', () => {
+      render(<TutorCard tutor={mockTutor} variant={variant} />);
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    it('renders price', () => {
+      render(<TutorCard tutor={mockTutor} variant={variant} />);
+      expect(screen.getByText(/\$50/)).toBeInTheDocument();
+    });
+
+    it('renders verified badge for verified tutors', () => {
+      render(<TutorCard tutor={mockTutor} variant={variant} />);
+      expect(screen.getByText('Verified')).toBeInTheDocument();
+    });
+
+    it('renders book button', () => {
+      render(<TutorCard tutor={mockTutor} variant={variant} />);
+      expect(screen.getByRole('button', { name: /book/i })).toBeInTheDocument();
+    });
+
+    it('has correct testid', () => {
+      render(<TutorCard tutor={mockTutor} variant={variant} />);
+      expect(screen.getByTestId(`tutor-card-${variant}`)).toBeInTheDocument();
+    });
+  });
+
+  describe('control variant specifics', () => {
+    it('renders headline', () => {
+      render(<TutorCard tutor={mockTutor} variant="control" />);
+      expect(screen.getByText(mockTutor.headline)).toBeInTheDocument();
+    });
+
+    it('renders multiple subjects', () => {
+      render(<TutorCard tutor={mockTutor} variant="control" />);
+      expect(screen.getByText('math')).toBeInTheDocument();
+      expect(screen.getByText('algebra')).toBeInTheDocument();
+    });
+
+    it('renders location', () => {
+      const tutorWithLocation = { ...mockTutor, location: 'New York' };
+      render(<TutorCard tutor={tutorWithLocation} variant="control" />);
+      expect(screen.getByText('New York')).toBeInTheDocument();
+    });
+  });
+
+  describe('compact variant specifics', () => {
+    it('renders only first subject', () => {
+      render(<TutorCard tutor={mockTutor} variant="compact" />);
+      expect(screen.getByText('math')).toBeInTheDocument();
+      // Compact variant doesn't show additional subjects as badges
+      expect(screen.queryByText('algebra')).not.toBeInTheDocument();
+    });
+
+    it('does not render headline', () => {
+      render(<TutorCard tutor={mockTutor} variant="compact" />);
+      expect(screen.queryByText(mockTutor.headline)).not.toBeInTheDocument();
+    });
+
+    it('has shorter book button text', () => {
+      render(<TutorCard tutor={mockTutor} variant="compact" />);
+      expect(screen.getByRole('button', { name: /book/i })).toHaveTextContent('Book');
+    });
+  });
+
+  describe('detailed variant specifics', () => {
+    it('renders headline', () => {
+      render(<TutorCard tutor={mockTutor} variant="detailed" />);
+      expect(screen.getByText(mockTutor.headline)).toBeInTheDocument();
+    });
+
+    it('shows response time', () => {
+      render(<TutorCard tutor={mockTutor} variant="detailed" />);
+      expect(screen.getByText(/responds within/i)).toBeInTheDocument();
+    });
+
+    it('shows Top Rated badge for high-rated tutors', () => {
+      const topRatedTutor = { ...mockTutor, rating: '4.9', reviews_count: 15 };
+      render(<TutorCard tutor={topRatedTutor} variant="detailed" />);
+      expect(screen.getByText('Top Rated')).toBeInTheDocument();
+    });
+
+    it('does not show Top Rated badge for lower-rated tutors', () => {
+      const regularTutor = { ...mockTutor, rating: '4.5', reviews_count: 5 };
+      render(<TutorCard tutor={regularTutor} variant="detailed" />);
+      expect(screen.queryByText('Top Rated')).not.toBeInTheDocument();
+    });
+
+    it('shows students count for tutors with reviews', () => {
+      const tutorWithReviews = { ...mockTutor, reviews_count: 20 };
+      render(<TutorCard tutor={tutorWithReviews} variant="detailed" />);
+      expect(screen.getByText(/students/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('fallback behavior', () => {
+    it('renders control variant for unknown variant', () => {
+      // @ts-expect-error Testing invalid variant
+      render(<TutorCard tutor={mockTutor} variant="unknown" />);
+      expect(screen.getByTestId('tutor-card-control')).toBeInTheDocument();
+    });
   });
 });

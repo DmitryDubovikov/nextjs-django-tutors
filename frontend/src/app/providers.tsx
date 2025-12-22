@@ -13,6 +13,7 @@ import {
   setRefreshFailedCallback,
   setSessionRefreshCallback,
 } from '@/lib/api-client';
+import { FeatureFlagsProvider } from '@/providers/feature-flags-provider';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -214,8 +215,10 @@ export function Providers({ children }: ProvidersProps) {
     <SessionProvider refetchOnWindowFocus={true}>
       <AuthTokenSync />
       <QueryClientProvider client={queryClient}>
-        <NuqsAdapter>{children}</NuqsAdapter>
-        <Toaster />
+        <FeatureFlagsProvider>
+          <NuqsAdapter>{children}</NuqsAdapter>
+          <Toaster />
+        </FeatureFlagsProvider>
       </QueryClientProvider>
     </SessionProvider>
   );
