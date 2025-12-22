@@ -1,5 +1,5 @@
 @startuml component
-title System Architecture - Tutors Marketplace MVP
+title System Architecture - Tutors Marketplace
 
 skinparam componentStyle rectangle
 skinparam backgroundColor #FEFEFE
@@ -13,19 +13,34 @@ package "Frontend (Next.js 15)" {
     [React Components\nUI Kit + Features] as components
     [TanStack Query\nServer State] as query
     [Generated API Client\n(Orval)] as client
+    [NextAuth v5\nSession Management] as nextauth
 }
 
 package "Backend (Django 5.2)" {
     [DRF ViewSets\nREST API] as api
     [Serializers\nValidation] as serializers
     [Models\nBusiness Logic] as models
+    [SimpleJWT\nAuth Tokens] as jwt
     [OpenAPI Schema\n(drf-spectacular)] as schema
+    [WebSocket\nChat Handler] as websocket
+}
+
+package "Search Service (Go)" {
+    [HTTP API\nSearch Endpoints] as searchapi
+    [OpenSearch Client\nIndexing & Query] as osclient
 }
 
 package "Data Layer" {
     database "PostgreSQL 17" as db
-    database "Redis 7.4\nCache" as redis
+    database "Redis 7.4\nCache & Sessions" as redis
+    database "OpenSearch\nFull-text Search" as opensearch
     storage "MinIO\nFile Storage" as minio
+}
+
+package "External Services" {
+    cloud "Google OAuth" as google
+    cloud "GitHub OAuth" as github
+    cloud "Stripe\nPayments" as stripe
 }
 
 browser --> pages : HTTPS
@@ -33,18 +48,30 @@ pages --> components
 components --> query
 query --> client
 client --> api : REST/JSON
+client --> searchapi : Search queries
+nextauth --> jwt : Token exchange
+nextauth --> google : OAuth
+nextauth --> github : OAuth
+
 api --> serializers
 serializers --> models
 models --> db
 models --> redis : cache
 api --> minio : file upload
+api --> stripe : payments
+websocket --> redis : pub/sub
+
+searchapi --> osclient
+osclient --> opensearch
+api ..> searchapi : sync tutors
+
 schema ..> client : generates types
 
 @enduml
 
 
 @startuml class
-title Domain Model - Tutors Marketplace MVP
+title Domain Model - Tutors Marketplace
 
 skinparam classAttributeIconSize 0
 skinparam backgroundColor #FEFEFE
@@ -54,9 +81,10 @@ class User {
     +email: string
     +first_name: string
     +last_name: string
-    +user_type: enum
+    +user_type: UserType
     +avatar: string?
     +phone: string?
+    +is_staff: bool
     +created_at: datetime
 }
 
@@ -70,17 +98,22 @@ class Tutor {
     +subjects: json[]
     +rating: decimal
     +reviews_count: int
-    +location: string
+    +location: string?
     +formats: json[]
     +is_verified: bool
     +created_at: datetime
+    +updated_at: datetime
+    --
+    +full_name: string
+    +avatar_url: string?
 }
 
 class TutorDraft {
     +id: int
     +user: User [1:1]
     +data: json
-    +current_step: int
+    +current_step: int (0-4)
+    +created_at: datetime
     +updated_at: datetime
 }
 
@@ -90,10 +123,43 @@ class Booking {
     +student: User [FK]
     +scheduled_at: datetime
     +duration_minutes: int
-    +status: enum
+    +status: BookingStatus
     +price: decimal
-    +notes: text
+    +notes: text?
     +created_at: datetime
+    +updated_at: datetime
+}
+
+class ChatRoom {
+    +id: UUID
+    +tutor: User [FK]
+    +student: User [FK]
+    +booking: Booking? [FK]
+    +created_at: datetime
+    +updated_at: datetime
+}
+
+class Message {
+    +id: UUID
+    +room: ChatRoom [FK]
+    +sender: User [FK]
+    +content: text
+    +is_read: bool
+    +created_at: datetime
+}
+
+class Payment {
+    +id: UUID
+    +payment_intent_id: string
+    +idempotency_key: string
+    +amount: decimal
+    +currency: string
+    +status: PaymentStatus
+    +booking: Booking [FK]
+    +user: User [FK]
+    +metadata: json?
+    +created_at: datetime
+    +updated_at: datetime
 }
 
 enum BookingStatus {
@@ -101,6 +167,14 @@ enum BookingStatus {
     CONFIRMED
     CANCELLED
     COMPLETED
+}
+
+enum PaymentStatus {
+    PENDING
+    PROCESSING
+    SUCCEEDED
+    FAILED
+    REFUNDED
 }
 
 enum UserType {
@@ -112,32 +186,41 @@ User "1" -- "0..1" Tutor : has profile
 User "1" -- "0..1" TutorDraft : has draft
 User "1" -- "*" Booking : books as student
 Tutor "1" -- "*" Booking : receives
+Booking "1" -- "0..1" ChatRoom : linked
+Booking "1" -- "0..1" Payment : paid by
+User "1" -- "*" ChatRoom : participates (tutor)
+User "1" -- "*" ChatRoom : participates (student)
+ChatRoom "1" -- "*" Message : contains
+User "1" -- "*" Message : sends
+User "1" -- "*" Payment : makes
+
 Booking --> BookingStatus
+Payment --> PaymentStatus
 User --> UserType
 
 @enduml
 
 
-@startuml sequence
+@startuml sequence_booking
 title Booking Flow - Create Lesson Booking
 
 skinparam backgroundColor #FEFEFE
 skinparam sequenceMessageAlign center
 
 actor Student
-participant "TutorCard\nComponent" as card
+participant "TutorProfile\nPage" as profile
 participant "TanStack\nQuery" as query
 participant "API Client\n(Orval)" as client
 participant "BookingViewSet\nDjango" as api
 database "PostgreSQL" as db
 
-Student -> card : Click "Book Lesson"
-activate card
-card -> card : Open booking dialog
-card -> Student : Show date/time picker
+Student -> profile : Click "Book Lesson"
+activate profile
+profile -> profile : Open booking dialog
+profile -> Student : Show date/time picker
 
-Student -> card : Select datetime\n& confirm
-card -> query : mutate(createBooking)
+Student -> profile : Select datetime\n& confirm
+profile -> query : mutate(createBooking)
 activate query
 
 query -> client : POST /api/bookings/
@@ -147,7 +230,7 @@ client -> api : CreateBookingSerializer
 activate api
 
 api -> api : Validate data
-api -> api : Calculate price\n(hourly_rate * duration)
+api -> api : Calculate price\n(hourly_rate * duration / 60)
 api -> db : INSERT booking
 activate db
 db --> api : booking record
@@ -160,11 +243,244 @@ client --> query : response
 deactivate client
 
 query -> query : Invalidate queries\n['bookings']
-query --> card : onSuccess
+query --> profile : onSuccess
 deactivate query
 
-card -> card : Close dialog
-card -> Student : Show success toast
-deactivate card
+profile -> profile : Close dialog
+profile -> Student : Show success toast\n"Booking created!"
+deactivate profile
+
+@enduml
+
+
+@startuml sequence_payment
+title Payment Flow - Checkout
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor Student
+participant "Bookings\nPage" as bookings
+participant "Checkout\nDialog" as checkout
+participant "Payment\nForm" as form
+participant "API Client" as client
+participant "PaymentViewSet\nDjango" as api
+participant "Stripe" as stripe
+database "PostgreSQL" as db
+
+Student -> bookings : Click "Pay"
+activate bookings
+bookings -> checkout : Open checkout dialog
+activate checkout
+
+checkout -> form : Render payment form
+activate form
+Student -> form : Enter card details
+
+form -> client : POST /api/payments/create-intent/
+activate client
+client -> api : Create PaymentIntent
+activate api
+api -> stripe : Create PaymentIntent
+activate stripe
+stripe --> api : {client_secret}
+deactivate stripe
+api -> db : INSERT payment (PENDING)
+api --> client : {client_secret, payment_id}
+deactivate api
+deactivate client
+
+form -> stripe : confirmPayment(client_secret)
+activate stripe
+stripe -> stripe : Process payment
+stripe --> form : {status: succeeded}
+deactivate stripe
+
+form -> client : POST /api/payments/{id}/confirm/
+activate client
+client -> api : Confirm payment
+activate api
+api -> db : UPDATE payment (SUCCEEDED)
+api -> db : UPDATE booking (CONFIRMED)
+api --> client : {payment, booking}
+deactivate api
+deactivate client
+
+form --> checkout : Payment complete
+deactivate form
+checkout --> bookings : Close dialog
+deactivate checkout
+bookings -> Student : Show success\n"Payment successful!"
+deactivate bookings
+
+@enduml
+
+
+@startuml sequence_chat
+title Chat Flow - Send Message
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor Student
+participant "ChatRoom\nComponent" as chat
+participant "WebSocket\nClient" as ws
+participant "Django\nChannels" as channels
+database "Redis\nPub/Sub" as redis
+database "PostgreSQL" as db
+actor Tutor
+
+Student -> chat : Type message\n& send
+activate chat
+
+chat -> ws : send({type: 'message',\ncontent: '...'})
+activate ws
+
+ws -> channels : WebSocket frame
+activate channels
+
+channels -> db : INSERT message
+activate db
+db --> channels : message record
+deactivate db
+
+channels -> redis : PUBLISH chat_{room_id}
+activate redis
+redis --> channels : OK
+deactivate redis
+
+channels --> ws : {type: 'message',\nmessage: {...}}
+deactivate channels
+
+ws --> chat : onMessage
+deactivate ws
+
+chat -> chat : Append to messages
+chat -> Student : Show sent message
+deactivate chat
+
+redis -> channels : SUBSCRIBE notification
+activate channels
+channels -> Tutor : WebSocket push\n"New message"
+deactivate channels
+
+@enduml
+
+
+@startuml sequence_search
+title Search Flow - Full-text Search via Go Service
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor Student
+participant "TutorFilters\nComponent" as filters
+participant "TanStack\nQuery" as query
+participant "Go Search\nService" as search
+database "OpenSearch" as os
+participant "Django\nBackend" as django
+database "PostgreSQL" as db
+
+== Search Query ==
+
+Student -> filters : Enter search query\n"math teacher"
+activate filters
+
+filters -> query : useQuery(['search', query])
+activate query
+
+query -> search : GET /tutors/search?q=math+teacher
+activate search
+
+search -> os : Search query\n{query: "math teacher",\nfields: [name, subjects, bio]}
+activate os
+os --> search : {hits: [...]}
+deactivate os
+
+search --> query : [{id, name, score}, ...]
+deactivate search
+
+query --> filters : Search results
+deactivate query
+
+filters -> Student : Display matching tutors
+deactivate filters
+
+== Index Sync (Background) ==
+
+django -> search : POST /tutors/{id}\n(on tutor create/update)
+activate search
+search -> os : Index document
+activate os
+os --> search : OK
+deactivate os
+search --> django : 200 OK
+deactivate search
+
+@enduml
+
+
+@startuml sequence_wizard
+title Tutor Profile Wizard - 5-Step Creation
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor Tutor
+participant "Wizard\nProvider" as wizard
+participant "Step\nComponents" as steps
+participant "localStorage" as local
+participant "API Client" as client
+participant "TutorDraftViewSet\nDjango" as api
+database "PostgreSQL" as db
+
+Tutor -> wizard : Start wizard
+activate wizard
+
+wizard -> local : Load saved draft
+activate local
+local --> wizard : {data, currentStep}
+deactivate local
+
+wizard -> steps : Render step 1\n(Personal Info)
+activate steps
+
+loop Each step (1-5)
+    Tutor -> steps : Fill form fields
+    steps -> wizard : onChange(data)
+
+    wizard -> local : Save draft\n(debounced 500ms)
+
+    Tutor -> steps : Click "Next"
+    steps -> wizard : nextStep()
+
+    wizard -> client : PUT /api/tutor-drafts/
+    activate client
+    client -> api : Upsert draft
+    activate api
+    api -> db : UPSERT tutor_draft
+    api --> client : {draft}
+    deactivate api
+    deactivate client
+
+    wizard -> steps : Render next step
+end
+
+deactivate steps
+
+Tutor -> wizard : Click "Publish"
+wizard -> client : POST /api/tutor-drafts/publish/
+activate client
+client -> api : Publish draft
+activate api
+api -> api : Validate all fields
+api -> db : INSERT tutor
+api -> db : DELETE tutor_draft
+api --> client : {tutor}
+deactivate api
+deactivate client
+
+wizard -> Tutor : Redirect to\ntutor profile page
+deactivate wizard
 
 @enduml
