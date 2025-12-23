@@ -1,0 +1,503 @@
+================================================================================
+                    AWS ECS FARGATE DEPLOYMENT PLAN
+                    Tutors Marketplace Project
+================================================================================
+
+OVERVIEW
+--------
+Деплой разбит на 6 самодостаточных фаз. Каждая фаза:
+- Может быть выполнена независимо
+- Имеет четкие входы/выходы
+- Тестируется отдельно
+- Можно остановиться после любой фазы и продолжить позже
+
+Общая стоимость: ~$80-150/мес (зависит от нагрузки)
+Время на реализацию: 2-4 дня (при наличии опыта с AWS)
+
+
+================================================================================
+PHASE 1: FOUNDATION (Базовая инфраструктура)
+================================================================================
+
+Цель: Создать сетевую основу для всех сервисов
+
+Terraform модули:
+  - terraform/modules/vpc/
+  - terraform/environments/prod/vpc.tf
+
+Ресурсы:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  VPC (10.0.0.0/16)                                          │
+  │  ├── Public Subnets (2 AZ)     - для ALB                    │
+  │  │   ├── 10.0.1.0/24 (eu-central-1a)                        │
+  │  │   └── 10.0.2.0/24 (eu-central-1b)                        │
+  │  ├── Private Subnets (2 AZ)    - для ECS, RDS, Redis        │
+  │  │   ├── 10.0.10.0/24 (eu-central-1a)                       │
+  │  │   └── 10.0.20.0/24 (eu-central-1b)                       │
+  │  ├── Internet Gateway                                        │
+  │  ├── NAT Gateway (1 или 2 для HA)                           │
+  │  └── Route Tables                                            │
+  └─────────────────────────────────────────────────────────────┘
+
+Security Groups:
+  - sg-alb:      80, 443 from 0.0.0.0/0
+  - sg-ecs:      3000, 8000 from sg-alb
+  - sg-rds:      5432 from sg-ecs
+  - sg-redis:    6379 from sg-ecs
+
+Выходы Phase 1:
+  - vpc_id
+  - public_subnet_ids
+  - private_subnet_ids
+  - security_group_ids
+
+Стоимость: ~$35/мес (NAT Gateway - основная статья)
+
+Команды:
+  cd terraform/environments/prod
+  terraform init
+  terraform apply -target=module.vpc
+
+
+================================================================================
+PHASE 2: DATA LAYER (Базы данных)
+================================================================================
+
+Цель: Развернуть PostgreSQL и Redis
+
+Terraform модули:
+  - terraform/modules/rds/
+  - terraform/modules/elasticache/
+  - terraform/environments/prod/data.tf
+
+Ресурсы:
+
+  RDS PostgreSQL:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  RDS Instance                                                │
+  │  ├── Engine: PostgreSQL 15                                   │
+  │  ├── Instance: db.t3.micro (Free Tier) или db.t3.small      │
+  │  ├── Storage: 20GB gp3                                       │
+  │  ├── Multi-AZ: false (для экономии) или true (для prod)     │
+  │  ├── Backup: 7 days retention                                │
+  │  └── Subnet Group: private subnets                           │
+  └─────────────────────────────────────────────────────────────┘
+
+  ElastiCache Redis:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  ElastiCache Cluster                                         │
+  │  ├── Engine: Redis 7                                         │
+  │  ├── Node: cache.t3.micro                                    │
+  │  ├── Replicas: 0 (для экономии) или 1 (для HA)              │
+  │  └── Subnet Group: private subnets                           │
+  └─────────────────────────────────────────────────────────────┘
+
+Secrets Manager:
+  - /tutors/prod/db-credentials
+  - /tutors/prod/django-secret-key
+
+Выходы Phase 2:
+  - rds_endpoint
+  - rds_port
+  - redis_endpoint
+  - redis_port
+  - secrets_arns
+
+Стоимость: ~$25-40/мес
+
+Команды:
+  terraform apply -target=module.rds -target=module.elasticache
+
+
+================================================================================
+PHASE 3: STORAGE (S3 + ECR)
+================================================================================
+
+Цель: Хранилище для файлов и Docker образов
+
+Terraform модули:
+  - terraform/modules/s3/
+  - terraform/modules/ecr/
+  - terraform/environments/prod/storage.tf
+
+Ресурсы:
+
+  S3 Buckets:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-prod-media                                           │
+  │  ├── Для загрузок пользователей (аватары, документы)        │
+  │  ├── CORS: разрешить frontend domain                        │
+  │  ├── Lifecycle: переход в IA через 90 дней                  │
+  │  └── Public access: через CloudFront (Phase 6)              │
+  │                                                              │
+  │  tutors-prod-static                                          │
+  │  ├── Django collectstatic (admin, DRF UI)                   │
+  │  └── Public read                                             │
+  └─────────────────────────────────────────────────────────────┘
+
+  ECR Repositories:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-backend                                              │
+  │  ├── Lifecycle: keep last 10 images                         │
+  │  └── Scan on push: enabled                                   │
+  │                                                              │
+  │  tutors-frontend                                             │
+  │  ├── Lifecycle: keep last 10 images                         │
+  │  └── Scan on push: enabled                                   │
+  └─────────────────────────────────────────────────────────────┘
+
+Выходы Phase 3:
+  - media_bucket_name
+  - static_bucket_name
+  - backend_ecr_url
+  - frontend_ecr_url
+
+Стоимость: ~$1-5/мес (зависит от объема)
+
+Команды:
+  terraform apply -target=module.s3 -target=module.ecr
+
+  # Собрать и запушить образы
+  aws ecr get-login-password | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+
+  docker build -t tutors-backend ./backend
+  docker tag tutors-backend:latest <ecr-url>/tutors-backend:latest
+  docker push <ecr-url>/tutors-backend:latest
+
+  docker build -t tutors-frontend ./frontend
+  docker tag tutors-frontend:latest <ecr-url>/tutors-frontend:latest
+  docker push <ecr-url>/tutors-frontend:latest
+
+
+================================================================================
+PHASE 4: COMPUTE (ECS Fargate)
+================================================================================
+
+Цель: Запустить контейнеры приложения
+
+Terraform модули:
+  - terraform/modules/ecs/
+  - terraform/environments/prod/ecs.tf
+
+Ресурсы:
+
+  ECS Cluster:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-prod-cluster                                         │
+  │  ├── Capacity Provider: FARGATE, FARGATE_SPOT               │
+  │  └── Container Insights: enabled                             │
+  └─────────────────────────────────────────────────────────────┘
+
+  ECS Service: Backend
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-backend-service                                      │
+  │  ├── Task Definition:                                        │
+  │  │   ├── CPU: 256 (0.25 vCPU)                               │
+  │  │   ├── Memory: 512 MB                                      │
+  │  │   ├── Image: <ecr>/tutors-backend:latest                 │
+  │  │   ├── Port: 8000                                          │
+  │  │   ├── Command: gunicorn config.wsgi:application          │
+  │  │   └── Environment: from Secrets Manager                   │
+  │  ├── Desired Count: 2                                        │
+  │  ├── Min: 1, Max: 4                                          │
+  │  ├── Health Check: /api/health/                              │
+  │  └── Auto Scaling: CPU > 70%                                 │
+  └─────────────────────────────────────────────────────────────┘
+
+  ECS Service: Frontend
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-frontend-service                                     │
+  │  ├── Task Definition:                                        │
+  │  │   ├── CPU: 256 (0.25 vCPU)                               │
+  │  │   ├── Memory: 512 MB                                      │
+  │  │   ├── Image: <ecr>/tutors-frontend:latest                │
+  │  │   ├── Port: 3000                                          │
+  │  │   └── Command: npm start                                  │
+  │  ├── Desired Count: 2                                        │
+  │  ├── Min: 1, Max: 4                                          │
+  │  └── Auto Scaling: CPU > 70%                                 │
+  └─────────────────────────────────────────────────────────────┘
+
+  ECS Task: Migrations (one-off)
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-backend-migrate                                      │
+  │  ├── Same as backend but:                                    │
+  │  │   └── Command: python manage.py migrate                   │
+  │  └── Run manually or in CI/CD before deploy                  │
+  └─────────────────────────────────────────────────────────────┘
+
+IAM Roles:
+  - ecs-task-execution-role (pull ECR, read secrets)
+  - ecs-task-role (S3 access, CloudWatch logs)
+
+CloudWatch Log Groups:
+  - /ecs/tutors-backend
+  - /ecs/tutors-frontend
+
+Выходы Phase 4:
+  - ecs_cluster_name
+  - backend_service_name
+  - frontend_service_name
+
+Стоимость: ~$25-50/мес (зависит от количества задач)
+
+Команды:
+  terraform apply -target=module.ecs
+
+  # Запустить миграции
+  aws ecs run-task \
+    --cluster tutors-prod-cluster \
+    --task-definition tutors-backend-migrate \
+    --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[...],securityGroups=[...]}"
+
+
+================================================================================
+PHASE 5: NETWORKING (ALB + DNS)
+================================================================================
+
+Цель: Настроить доступ из интернета
+
+Terraform модули:
+  - terraform/modules/alb/
+  - terraform/modules/route53/
+  - terraform/environments/prod/networking.tf
+
+Ресурсы:
+
+  Application Load Balancer:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors-prod-alb                                             │
+  │  ├── Scheme: internet-facing                                 │
+  │  ├── Subnets: public subnets                                 │
+  │  │                                                           │
+  │  ├── Listener :443 (HTTPS)                                   │
+  │  │   ├── Certificate: ACM (*.tutors.example.com)            │
+  │  │   ├── Rule: /api/* → backend target group                │
+  │  │   ├── Rule: /admin/* → backend target group              │
+  │  │   └── Rule: default → frontend target group              │
+  │  │                                                           │
+  │  ├── Listener :80 (HTTP)                                     │
+  │  │   └── Redirect to HTTPS                                   │
+  │  │                                                           │
+  │  ├── Target Group: backend                                   │
+  │  │   ├── Port: 8000                                          │
+  │  │   ├── Health: /api/health/                                │
+  │  │   └── Targets: ECS backend tasks                          │
+  │  │                                                           │
+  │  └── Target Group: frontend                                  │
+  │      ├── Port: 3000                                          │
+  │      ├── Health: /                                           │
+  │      └── Targets: ECS frontend tasks                         │
+  └─────────────────────────────────────────────────────────────┘
+
+  ACM Certificate:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  *.tutors.example.com                                        │
+  │  └── DNS validation via Route 53                             │
+  └─────────────────────────────────────────────────────────────┘
+
+  Route 53 (если домен в AWS):
+  ┌─────────────────────────────────────────────────────────────┐
+  │  tutors.example.com                                          │
+  │  ├── A record → ALB (alias)                                  │
+  │  └── AAAA record → ALB (alias)                               │
+  └─────────────────────────────────────────────────────────────┘
+
+Выходы Phase 5:
+  - alb_dns_name
+  - alb_zone_id
+  - certificate_arn
+  - domain_name
+
+Стоимость: ~$20/мес (ALB) + $0.50/мес (Route 53 zone)
+
+Команды:
+  terraform apply -target=module.alb -target=module.acm -target=module.route53
+
+
+================================================================================
+PHASE 6: OPTIMIZATION (Optional)
+================================================================================
+
+Цель: Улучшить производительность и безопасность
+
+Ресурсы (опционально):
+
+  CloudFront CDN:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Distribution                                                │
+  │  ├── Origin: ALB                                             │
+  │  ├── Origin: S3 (static/media)                              │
+  │  ├── Cache behaviors:                                        │
+  │  │   ├── /_next/static/* → cache 1 year                     │
+  │  │   ├── /static/* → cache 1 day                            │
+  │  │   ├── /media/* → cache 1 day                             │
+  │  │   └── default → no cache, forward to ALB                 │
+  │  └── WAF: optional                                           │
+  └─────────────────────────────────────────────────────────────┘
+
+  WAF (Web Application Firewall):
+  ┌─────────────────────────────────────────────────────────────┐
+  │  WebACL                                                      │
+  │  ├── AWS Managed Rules: Common, SQL injection, XSS          │
+  │  ├── Rate limiting: 2000 req/5min per IP                    │
+  │  └── Geo blocking (optional)                                 │
+  └─────────────────────────────────────────────────────────────┘
+
+  CloudWatch Alarms:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Alarms                                                      │
+  │  ├── ECS CPU > 80%                                           │
+  │  ├── ECS Memory > 80%                                        │
+  │  ├── ALB 5xx errors > 10/min                                 │
+  │  ├── RDS CPU > 80%                                           │
+  │  └── RDS free storage < 5GB                                  │
+  └─────────────────────────────────────────────────────────────┘
+
+Стоимость: +$10-30/мес
+
+
+================================================================================
+FILE STRUCTURE
+================================================================================
+
+terraform/
+├── modules/
+│   ├── vpc/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── rds/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── elasticache/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── s3/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── ecr/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── ecs/
+│   │   ├── main.tf
+│   │   ├── task-definitions/
+│   │   │   ├── backend.json
+│   │   │   └── frontend.json
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   └── alb/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+├── environments/
+│   ├── prod/
+│   │   ├── main.tf          # Provider config
+│   │   ├── vpc.tf           # Phase 1
+│   │   ├── data.tf          # Phase 2
+│   │   ├── storage.tf       # Phase 3
+│   │   ├── ecs.tf           # Phase 4
+│   │   ├── networking.tf    # Phase 5
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── terraform.tfvars
+│   └── staging/             # Копия prod с меньшими ресурсами
+└── backend.tf               # S3 backend для state
+
+
+================================================================================
+CI/CD PIPELINE (GitHub Actions)
+================================================================================
+
+.github/workflows/deploy.yml:
+
+1. On push to main:
+   ├── Run tests (existing CI)
+   ├── Build Docker images
+   ├── Push to ECR
+   ├── Run migrations (ECS run-task)
+   ├── Update ECS services (force new deployment)
+   └── Wait for deployment to complete
+
+2. On pull request:
+   ├── Run tests
+   ├── Build Docker images (no push)
+   └── Terraform plan (show changes)
+
+
+================================================================================
+ENVIRONMENT VARIABLES
+================================================================================
+
+Backend (ECS Task Definition):
+  DATABASE_URL:        secretsmanager:/tutors/prod/db-url
+  REDIS_URL:           secretsmanager:/tutors/prod/redis-url
+  DJANGO_SECRET_KEY:   secretsmanager:/tutors/prod/django-secret
+  DJANGO_SETTINGS_MODULE: config.settings.production
+  ALLOWED_HOSTS:       tutors.example.com
+  AWS_STORAGE_BUCKET_NAME: tutors-prod-media
+  AWS_S3_REGION_NAME:  eu-central-1
+
+Frontend (ECS Task Definition):
+  NEXT_PUBLIC_API_URL: https://tutors.example.com/api
+  NEXTAUTH_URL:        https://tutors.example.com
+  NEXTAUTH_SECRET:     secretsmanager:/tutors/prod/nextauth-secret
+
+
+================================================================================
+COST BREAKDOWN (Estimated Monthly)
+================================================================================
+
+Service                          Min ($)    Max ($)
+─────────────────────────────────────────────────────
+NAT Gateway (1x)                   32         32
+RDS PostgreSQL (db.t3.micro)        0*        15
+RDS PostgreSQL (db.t3.small)       15         25
+ElastiCache (cache.t3.micro)        0*        12
+ECS Fargate (4 tasks, 0.25 vCPU)   20         40
+ALB                                16         25
+S3 + Data Transfer                  1          5
+ECR                                 1          3
+CloudWatch Logs                     1          5
+Route 53                            1          1
+Secrets Manager                     1          2
+─────────────────────────────────────────────────────
+TOTAL                              80        150
+
+* Free Tier eligible (first 12 months)
+
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. [ ] Создать AWS аккаунт (если нет)
+2. [ ] Настроить AWS CLI и credentials
+3. [ ] Создать S3 bucket для Terraform state
+4. [ ] Реализовать Phase 1 (VPC)
+5. [ ] Реализовать Phase 2 (RDS, Redis)
+6. [ ] Адаптировать Dockerfile для production
+7. [ ] Реализовать Phase 3 (S3, ECR)
+8. [ ] Реализовать Phase 4 (ECS)
+9. [ ] Реализовать Phase 5 (ALB, DNS)
+10. [ ] Настроить CI/CD pipeline
+11. [ ] Тестирование и мониторинг
+
+
+================================================================================
+NOTES
+================================================================================
+
+- Каждая фаза независима: можно terraform destroy одну без влияния на другие
+- State хранится в S3 с DynamoDB locking
+- Все секреты в AWS Secrets Manager (не в tfvars!)
+- Используйте terraform workspace для staging/prod
+- NAT Gateway - основная статья расходов, можно заменить на NAT Instance
+  для экономии (~$5/мес вместо $32)
+
+================================================================================
